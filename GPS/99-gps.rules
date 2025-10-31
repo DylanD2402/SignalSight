@@ -1,0 +1,21 @@
+# udev rule for GPS module
+# This creates a persistent symlink for the GPS device
+#
+# Device Info:
+# - Vendor: 0403 (FTDI)
+# - Product: 6001 (FT232 USB-Serial)
+# - Serial: BG01OJQ2
+#
+# Install: sudo cp 99-gps.rules /etc/udev/rules.d/
+# Reload: sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# The GPS will be available at both:
+# - /dev/ttyUSB0 (or /dev/gps0 if ttyUSB0 conflicts)
+# - Its original /dev/ttyUSBx assignment
+
+# Create symlink /dev/gps0 for this specific GPS module
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="BG01OJQ2", SYMLINK+="gps0"
+
+# Optionally force this device to always be ttyUSB0 (not recommended if you have multiple USB serial devices)
+# Uncomment the line below only if you want to force ttyUSB0:
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="BG01OJQ2", KERNEL=="ttyUSB[0-9]*", SYMLINK+="ttyUSB0"
