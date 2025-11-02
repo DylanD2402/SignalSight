@@ -5,7 +5,6 @@ GPS integration for SignalSight using GPSD daemon.
 ## Files
 
 - `demo.py` - Live GPS data demo (great for presentations!)
-- `manual_test_gps.py` - Interactive manual test script for GPS module
 - `99-gps.rules` - udev rule for persistent GPS device naming
 - `setup_gps_device.sh` - Install udev rule for /dev/gps0
 - `update_gpsd_config.sh` - Update GPSD to use /dev/gps0
@@ -226,7 +225,7 @@ For detailed test documentation, see `tests/README.md`.
 
 Run the interactive manual test:
 ```bash
-python3 manual_test_gps.py
+python3 address_demo.py
 ```
 
 This script will:
