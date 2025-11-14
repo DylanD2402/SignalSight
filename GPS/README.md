@@ -5,11 +5,14 @@ GPS integration for SignalSight using GPSD daemon.
 ## Files
 
 - `demo.py` - Live GPS data demo (great for presentations!)
+- `osm_demo.py` - GPS + OpenStreetMap demo - finds nearest traffic lights and intersections
 - `manual_test_gps.py` - Interactive manual test script for GPS module
 - `99-gps.rules` - udev rule for persistent GPS device naming
 - `setup_gps_device.sh` - Install udev rule for /dev/gps0
 - `update_gpsd_config.sh` - Update GPSD to use /dev/gps0
 - `setup_gps_complete.sh` - Complete setup (runs both scripts above)
+- `requirements.txt` - Python dependencies for GPS module
+- `OSM_DEMO_README.md` - Detailed documentation for OpenStreetMap demo
 
 ## Quick Start Guide
 
@@ -139,6 +142,8 @@ cd GPS/
 
 Now you're ready to run the demo! Make sure you're near a window or outdoors for best results:
 
+#### Basic GPS Demo
+
 ```bash
 python3 demo.py
 ```
@@ -160,12 +165,45 @@ python3 demo.py
 
 Perfect for showing to professors, friends, and project demonstrations!
 
+#### OpenStreetMap Demo (Enhanced)
+
+For a more advanced demo that finds nearby traffic lights and intersections:
+
+```bash
+# Install requests library if not already installed
+pip3 install requests
+
+# Run the OpenStreetMap demo
+python3 osm_demo.py
+```
+
+**This demo shows everything from the basic demo PLUS:**
+- 3 nearest traffic lights (within 500m)
+- 3 nearest intersections/crossings (within 500m)
+- Accurate distances to each feature
+- Street names and types
+- Live updates every 5 seconds
+
+**Requirements:**
+- Internet connection (for OpenStreetMap API queries)
+- GPS fix (same as basic demo)
+
+See `OSM_DEMO_README.md` for detailed documentation and troubleshooting.
+
 ## Running the Demo (After Initial Setup)
 
 Once setup is complete, you only need to:
+
+**Basic GPS Demo:**
 ```bash
 cd GPS/
 python3 demo.py
+```
+
+**OpenStreetMap Demo:**
+```bash
+cd GPS/
+python3 osm_demo.py
 ```
 
 ## Testing GPS

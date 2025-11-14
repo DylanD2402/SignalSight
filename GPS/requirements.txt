@@ -1,0 +1,13 @@
+# SignalSight GPS Module Requirements
+
+# GPS daemon interface
+gps>=3.19
+
+# HTTP requests for OpenStreetMap API
+requests>=2.25.0
+
+# Standard library modules (included with Python 3)
+# - time
+# - os
+# - math
+# - json
