@@ -33,42 +33,42 @@ Force Tags        system    integration    TODO
 Test GPS And Detection Integration
     [Documentation]    Verify GPS data integrates with detection for context
     [Tags]    hardware    gps    detection
-    Fail    NOT IMPLEMENTED - Missing detection module
+    Skip    NOT IMPLEMENTED - Missing detection module
 
 Test GPS Speed Based Alert Triggering
     [Documentation]    Test alert logic based on GPS speed + detection
     [Tags]    hardware    gps    alert
-    Fail    NOT IMPLEMENTED - Missing alert module
+    Skip    NOT IMPLEMENTED - Missing alert module
 
 Test Arduino Alert Output Integration
     [Documentation]    Verify Arduino receives and executes alert commands
     [Tags]    hardware    arduino    alert
-    Fail    NOT IMPLEMENTED - Missing Arduino and alert modules
+    Skip    NOT IMPLEMENTED - Missing Arduino and alert modules
 
 Test Detection To Alert Pipeline
     [Documentation]    Test complete flow: detect red light -> trigger alert
     [Tags]    hardware    detection    alert
-    Fail    NOT IMPLEMENTED - Missing detection and alert modules
+    Skip    NOT IMPLEMENTED - Missing detection and alert modules
 
 Test All Components Data Flow
     [Documentation]    Verify data flows correctly through all components
     [Tags]    hardware    dataflow
-    Fail    NOT IMPLEMENTED - Missing multiple modules
+    Skip    NOT IMPLEMENTED - Missing multiple modules
 
 Test Component Failure Recovery
     [Documentation]    Test system handles individual component failures
     [Tags]    hardware    error
-    Fail    NOT IMPLEMENTED - Missing multiple modules
+    Skip    NOT IMPLEMENTED - Missing multiple modules
 
 Test Concurrent Component Operation
     [Documentation]    Verify all components can operate concurrently
     [Tags]    hardware    concurrent
-    Fail    NOT IMPLEMENTED - Missing multiple modules
+    Skip    NOT IMPLEMENTED - Missing multiple modules
 
 Test Resource Sharing Between Components
     [Documentation]    Test components share resources (CPU, memory) correctly
     [Tags]    hardware    resources
-    Fail    NOT IMPLEMENTED - Missing multiple modules
+    Skip    NOT IMPLEMENTED - Missing multiple modules
 
 
 *** Keywords ***

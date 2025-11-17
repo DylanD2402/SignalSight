@@ -35,52 +35,52 @@ Force Tags        e2e    system    TODO
 Scenario: Driver Approaches Red Traffic Light
     [Documentation]    Complete scenario: Camera detects red light, system alerts driver
     [Tags]    hardware    slow    red_light
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Driver Approaches Yellow Traffic Light
     [Documentation]    Complete scenario: Camera detects yellow light, system warns driver
     [Tags]    hardware    slow    yellow_light
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Driver Approaches Green Traffic Light
     [Documentation]    Complete scenario: Camera detects green light, no alert needed
     [Tags]    hardware    slow    green_light
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Multiple Traffic Lights In View
     [Documentation]    System correctly identifies and processes multiple traffic lights
     [Tags]    hardware    slow    multiple
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Traffic Light At Long Distance
     [Documentation]    Detection and alert at maximum visible distance
     [Tags]    hardware    slow    distance
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Traffic Light At Close Range
     [Documentation]    Detection and alert at close range (emergency stop needed)
     [Tags]    hardware    slow    emergency
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Nighttime Detection
     [Documentation]    Traffic light detection in low light conditions
     [Tags]    hardware    slow    night
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Rainy Weather Detection
     [Documentation]    Traffic light detection with rain on camera lens
     [Tags]    hardware    slow    weather
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: Moving Vehicle Detection
     [Documentation]    Traffic light detection while vehicle is in motion
     [Tags]    hardware    slow    motion
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 Scenario: GPS Speed Based Alert Adjustment
     [Documentation]    Alert timing adjusts based on vehicle speed from GPS
     [Tags]    hardware    slow
-    Fail    NOT IMPLEMENTED - Complete system not yet developed
+    Skip    NOT IMPLEMENTED - Complete system not yet developed
 
 
 *** Keywords ***

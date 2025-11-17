@@ -34,37 +34,37 @@ ${ARDUINO_BAUD}    9600
 Test Arduino Serial Connection
     [Documentation]    Verify serial connection to Arduino Uno R3
     [Tags]    hardware    connection
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 Test Send Alert Command
     [Documentation]    Test sending alert command to Arduino
     [Tags]    hardware    command
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 Test Read Sensor Data
     [Documentation]    Test reading sensor data from Arduino
     [Tags]    hardware    sensor
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 Test Command Acknowledgment
     [Documentation]    Verify Arduino acknowledges commands correctly
     [Tags]    hardware    command
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 Test Serial Communication Error Recovery
     [Documentation]    Test recovery from communication errors
     [Tags]    hardware    error
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 Test Baud Rate Configuration
     [Documentation]    Verify baud rate configuration works
     [Tags]    hardware    config
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 Test Data Format Validation
     [Documentation]    Verify data format from Arduino is correct
     [Tags]    hardware    validation
-    Fail    NOT IMPLEMENTED - Arduino module not yet developed
+    Skip    NOT IMPLEMENTED - Arduino module not yet developed
 
 
 *** Keywords ***

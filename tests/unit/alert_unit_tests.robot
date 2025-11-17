@@ -29,47 +29,47 @@ Force Tags        alert    unit    TODO
 Test Audio Alert Generation
     [Documentation]    Verify audio alert is generated correctly
     [Tags]    software    audio
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Visual Alert Display
     [Documentation]    Verify visual alert is displayed correctly
     [Tags]    software    visual
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Red Light Alert
     [Documentation]    Test alert for red traffic light detection
     [Tags]    software    alert
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Yellow Light Alert
     [Documentation]    Test alert for yellow traffic light detection
     [Tags]    software    alert
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Alert Priority Handling
     [Documentation]    Verify higher priority alerts take precedence
     [Tags]    software    priority
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Alert Duration
     [Documentation]    Verify alert duration is correct
     [Tags]    software    timing
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Alert Cancellation
     [Documentation]    Verify alerts can be cancelled
     [Tags]    software    control
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Multiple Simultaneous Alerts
     [Documentation]    Test handling of multiple alerts at once
     [Tags]    software    concurrent
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 Test Alert Volume Control
     [Documentation]    Verify volume control works for audio alerts
     [Tags]    software    audio
-    Fail    NOT IMPLEMENTED - Alert module not yet developed
+    Skip    NOT IMPLEMENTED - Alert module not yet developed
 
 
 *** Keywords ***

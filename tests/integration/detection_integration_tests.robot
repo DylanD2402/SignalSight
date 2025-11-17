@@ -28,37 +28,37 @@ Force Tags        detection    integration    TODO
 Test YOLOv8 To HSV Pipeline
     [Documentation]    Verify complete detection to classification pipeline
     [Tags]    software    pipeline
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 Test HSV Classification On Detected Region
     [Documentation]    Test HSV color classification on YOLOv8 detected regions
     [Tags]    software    classification
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 Test Combined Confidence Score
     [Documentation]    Verify combined YOLOv8 + HSV confidence scoring
     [Tags]    software    confidence
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 Test No Detection Handling
     [Documentation]    Test pipeline when YOLOv8 detects no traffic lights
     [Tags]    software    error
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 Test Ambiguous Color Handling
     [Documentation]    Test handling of ambiguous HSV color classification
     [Tags]    software    error
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 Test Integrated Pipeline Performance
     [Documentation]    Verify end-to-end pipeline meets performance requirements
     [Tags]    software    performance
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 Test Multiple Traffic Light Processing
     [Documentation]    Test pipeline with multiple detected traffic lights
     [Tags]    software    multiple
-    Fail    NOT IMPLEMENTED - Detection modules not yet developed
+    Skip    NOT IMPLEMENTED - Detection modules not yet developed
 
 
 *** Keywords ***
