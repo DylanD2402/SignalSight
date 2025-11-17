@@ -113,16 +113,14 @@ def main():
                     lon = report.lon
 
                     if not fix_obtained:
-                        print("=" * 70)
-                        print("✓ GPS FIX OBTAINED!")
-                        print("=" * 70)
+                        print("GPS FIX OBTAINED")
                         fix_obtained = True
 
                     # Only query if position changed significantly (>10 meters)
                     if last_lat is None or abs(lat - last_lat) > 0.0001 or abs(lon - last_lon) > 0.0001:
                         last_lat = lat
                         last_lon = lon
-
+                        print("=" * 70)
                         print(f"\nCoordinates: {lat:.6f}, {lon:.6f}")
                         print("Fetching address from OpenStreetMap...")
 
@@ -133,9 +131,8 @@ def main():
                             addr = format_address(geocode_data)
 
                             if addr:
-                                print("\n" + "=" * 70)
+                                print("\n")
                                 print("YOUR CURRENT LOCATION:")
-                                print("=" * 70)
 
                                 if addr['street']:
                                     print(f"\nStreet Address: {addr['street']}")
@@ -163,20 +160,12 @@ def main():
                                 print(f"\n   Full Address:")
                                 print(f"   {addr['full_display']}")
 
-                                print("\n" + "=" * 70)
+                                print("\n")
 
                                 # Additional GPS info
                                 if hasattr(report, 'alt'):
                                     print(f"   Altitude:  {report.alt:.1f} m")
 
-                                if hasattr(report, 'speed'):
-                                    speed_kmh = report.speed * 3.6
-                                    print(f"   Speed:     {speed_kmh:.1f} km/h")
-
-                                if hasattr(report, 'track'):
-                                    print(f"   Heading:   {report.track:.1f}°")
-
-                                print("=" * 70)
 
                                 last_address = addr
                         else:
@@ -197,9 +186,9 @@ def main():
             time.sleep(1)
 
     except KeyboardInterrupt:
-        print("\n\n" + "=" * 70)
+        print("\n\n")
         print("Stopped.")
-        print("=" * 70)
+
     except Exception as e:
         print(f"\nError: {e}")
         print("\nTroubleshooting:")

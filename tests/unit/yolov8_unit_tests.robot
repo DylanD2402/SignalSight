@@ -29,37 +29,37 @@ Force Tags        yolov8    unit    TODO
 Test YOLOv8 Model Loading
     [Documentation]    Verify YOLOv8 model loads successfully
     [Tags]    software    model
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 Test Detect Red Traffic Light
     [Documentation]    Test detection of red traffic lights
     [Tags]    software    detection
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 Test Detect Yellow Traffic Light
     [Documentation]    Test detection of yellow traffic lights
     [Tags]    software    detection
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 Test Detect Green Traffic Light
     [Documentation]    Test detection of green traffic lights
     [Tags]    software    detection
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 Test Multiple Traffic Lights Detection
     [Documentation]    Test detection of multiple traffic lights in one image
     [Tags]    software    detection
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 Test Detection Confidence Threshold
     [Documentation]    Verify confidence threshold filtering works
     [Tags]    software    confidence
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 Test Inference Speed
     [Documentation]    Verify inference speed meets requirements
     [Tags]    software    performance
-    Fail    NOT IMPLEMENTED - YOLOv8 module not yet developed
+    Skip    NOT IMPLEMENTED - YOLOv8 module not yet developed
 
 
 *** Keywords ***

@@ -50,14 +50,16 @@ Verify TPV Report Structure
     [Documentation]    Verify TPV report has required fields
     [Arguments]    ${report}
     Should Be Equal    ${report}[class]    TPV
-    Dictionary Should Contain Key    ${report}    device
-    Dictionary Should Contain Key    ${report}    mode
+    # Verify required fields exist by accessing them
+    Should Not Be Equal    ${report}[device]    ${None}
+    Should Be True    ${report}[mode] >= 0
 
 Verify SKY Report Structure
     [Documentation]    Verify SKY report has required fields
     [Arguments]    ${report}
     Should Be Equal    ${report}[class]    SKY
-    Dictionary Should Contain Key    ${report}    device
+    # Verify required field exists by accessing it
+    Should Not Be Equal    ${report}[device]    ${None}
 
 Verify Satellite Count
     [Documentation]    Get and verify satellite data
