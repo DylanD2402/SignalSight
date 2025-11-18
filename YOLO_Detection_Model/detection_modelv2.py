@@ -93,4 +93,4 @@ def process_image(img_path):
 
 
 # --- Run on your test image ---
-process_image("../images/multi.jpg")  # replace with your file name
+process_image("images/green3.jpg")  # replace with your file name
