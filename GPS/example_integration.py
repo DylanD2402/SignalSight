@@ -330,11 +330,13 @@ class SimulatedGPSIntegration(SignalSightGPSIntegration):
                 # Update simulated position
                 self._update_simulation(dt)
 
-                # Query database
+                # Query database (with heading filtering to track only lights ahead)
                 lights = self._db.get_nearby_lights_fast(
                     self._simulated_position['lat'],
                     self._simulated_position['lon'],
-                    500
+                    500,
+                    heading=self._heading,
+                    heading_cone=90.0
                 )
                 self._nearby_lights = lights
 

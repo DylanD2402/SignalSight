@@ -399,10 +399,13 @@ class GPSTrafficLightSystem:
                 # Query database
                 start_time = time.perf_counter()
 
+                # Only track lights in the direction of travel if heading is available
                 lights = self._db.get_nearby_lights_fast(
                     position.latitude,
                     position.longitude,
-                    self.search_radius
+                    self.search_radius,
+                    heading=position.heading,
+                    heading_cone=90.0  # Track lights within ±90° of heading
                 )
 
                 query_time = time.perf_counter() - start_time

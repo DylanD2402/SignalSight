@@ -286,7 +286,7 @@ This excludes tests tagged with `hardware` or `TODO`, making it safe for automat
 ### GPS Tests Failing
 
 1. **GPSD not running**: `sudo systemctl start gpsd`
-2. **GPS device not found**: Check `/dev/gps0` exists, run `GPS/setup_gps_device.sh`
+2. **GPS device not found**: Check `/dev/gps0` exists, run `GPS/demo/setup_gps_device.sh`
 3. **No GPS fix**: Tests requiring fix need clear sky view, may take 30+ seconds
 4. **Permission denied**: Add user to `dialout` group: `sudo usermod -a -G dialout $USER`
 
