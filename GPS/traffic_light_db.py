@@ -165,6 +165,55 @@ class TrafficLightDB:
 
         return EARTH_RADIUS_M * c
 
+    def _calculate_bearing(self, lat1: float, lon1: float,
+                          lat2: float, lon2: float) -> float:
+        """
+        Calculate initial bearing from point 1 to point 2.
+
+        Args:
+            lat1, lon1: Starting point coordinates (degrees)
+            lat2, lon2: Destination point coordinates (degrees)
+
+        Returns:
+            Bearing in degrees (0-360, where 0 is North)
+        """
+        # Convert to radians
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        dlon = math.radians(lon2 - lon1)
+
+        # Calculate bearing
+        x = math.sin(dlon) * math.cos(lat2_rad)
+        y = (math.cos(lat1_rad) * math.sin(lat2_rad) -
+             math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(dlon))
+
+        bearing = math.atan2(x, y)
+
+        # Convert to degrees and normalize to 0-360
+        bearing_deg = (math.degrees(bearing) + 360) % 360
+
+        return bearing_deg
+
+    def _is_in_direction(self, bearing: float, heading: float,
+                        max_angle: float = 90.0) -> bool:
+        """
+        Check if a bearing is within the heading cone.
+
+        Args:
+            bearing: Bearing to target (degrees, 0-360)
+            heading: Current heading (degrees, 0-360)
+            max_angle: Maximum angle deviation (degrees, default 90)
+
+        Returns:
+            True if bearing is within ±max_angle of heading
+        """
+        # Calculate the difference, handling wrap-around
+        diff = abs(bearing - heading)
+        if diff > 180:
+            diff = 360 - diff
+
+        return diff <= max_angle
+
     def _get_bounding_box(self, lat: float, lon: float,
                           radius_m: float) -> Tuple[float, float, float, float]:
         """
@@ -193,7 +242,9 @@ class TrafficLightDB:
         )
 
     def get_nearby_lights_fast(self, lat: float, lon: float,
-                                radius_m: float = 500) -> List[TrafficLight]:
+                                radius_m: float = 500,
+                                heading: Optional[float] = None,
+                                heading_cone: float = 90.0) -> List[TrafficLight]:
         """
         Get traffic lights within radius, sorted by distance.
 
@@ -203,12 +254,17 @@ class TrafficLightDB:
         1. Calculate bounding box from radius
         2. Query database with spatial index for candidates
         3. Calculate exact Haversine distance for each candidate
-        4. Filter by radius and sort by distance
+        4. Filter by radius and optionally by heading direction
+        5. Sort by distance
 
         Args:
             lat: Latitude of query point (degrees)
             lon: Longitude of query point (degrees)
             radius_m: Search radius in meters (default 500m)
+            heading: Current heading in degrees (0-360, where 0 is North).
+                    If None, returns all lights regardless of direction.
+            heading_cone: Maximum angle deviation from heading (degrees, default 90).
+                         Only used if heading is provided.
 
         Returns:
             List of TrafficLight objects sorted by distance (nearest first)
@@ -220,6 +276,8 @@ class TrafficLightDB:
             raise ValueError(f"Invalid longitude: {lon}")
         if radius_m <= 0:
             raise ValueError(f"Invalid radius: {radius_m}")
+        if heading is not None and not (0 <= heading <= 360):
+            raise ValueError(f"Invalid heading: {heading}")
 
         # Get bounding box for spatial query
         min_lat, max_lat, min_lon, max_lon = self._get_bounding_box(
@@ -246,6 +304,12 @@ class TrafficLightDB:
 
             # Only include if within actual radius (bounding box is approximate)
             if distance <= radius_m:
+                # If heading is provided, filter by direction
+                if heading is not None:
+                    bearing = self._calculate_bearing(lat, lon, light_lat, light_lon)
+                    if not self._is_in_direction(bearing, heading, heading_cone):
+                        continue
+
                 results.append(TrafficLight(
                     id=light_id,
                     lat=light_lat,
@@ -256,13 +320,20 @@ class TrafficLightDB:
         # Sort by distance (nearest first)
         results.sort(key=lambda x: x.distance)
 
-        logger.debug(f"Found {len(results)} lights within {radius_m}m "
-                    f"of ({lat:.6f}, {lon:.6f})")
+        if heading is not None:
+            logger.debug(f"Found {len(results)} lights within {radius_m}m "
+                        f"and ±{heading_cone}° of heading {heading:.0f}° "
+                        f"at ({lat:.6f}, {lon:.6f})")
+        else:
+            logger.debug(f"Found {len(results)} lights within {radius_m}m "
+                        f"of ({lat:.6f}, {lon:.6f})")
 
         return results
 
     def get_closest_light(self, lat: float, lon: float,
-                          max_distance_m: float = 1000) -> Optional[TrafficLight]:
+                          max_distance_m: float = 1000,
+                          heading: Optional[float] = None,
+                          heading_cone: float = 90.0) -> Optional[TrafficLight]:
         """
         Get the single closest traffic light.
 
@@ -271,11 +342,15 @@ class TrafficLightDB:
         Args:
             lat, lon: Query point coordinates
             max_distance_m: Maximum distance to search (default 1000m)
+            heading: Current heading in degrees (0-360, where 0 is North).
+                    If None, returns closest light regardless of direction.
+            heading_cone: Maximum angle deviation from heading (degrees, default 90).
+                         Only used if heading is provided.
 
         Returns:
             TrafficLight object or None if no lights within range
         """
-        lights = self.get_nearby_lights_fast(lat, lon, max_distance_m)
+        lights = self.get_nearby_lights_fast(lat, lon, max_distance_m, heading, heading_cone)
         return lights[0] if lights else None
 
     def get_lights_in_bbox(self, min_lat: float, max_lat: float,
