@@ -1,35 +1,62 @@
 import cv2
 import time
+import serial
 from collections import deque
 from ultralytics import YOLO
 
-def live_traffic_light_detection(
-    model_path: str,
-    camera_index: int = 0,
-    conf_threshold: float = 0.5
-):
-    """
-    Run live traffic light detection using a camera feed and display inference FPS.
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
 
-    Args:
-        model_path (str): Path to trained YOLO model (.pt)
-        camera_index (int): Camera index (0 = default webcam)
-        conf_threshold (float): Confidence threshold
-    """
+MODEL_PATH = "best.pt"
+CAMERA_INDEX = 0
 
-    # Load YOLO model
-    model = YOLO(model_path)
+SERIAL_PORT = "/dev/tty.usbmodem1101"   # CHANGE THIS
+BAUD_RATE = 9600
+
+CONF_THRESHOLD = 0.5
+STABILITY_FRAMES = 5
+
+CLASS_TO_ARDUINO = {
+    "red": "ACTIVE_RED",
+    "yellow": "ACTIVE_YELLOW",
+    "green": "ACTIVE_GREEN"
+}
+
+CLASS_PRIORITY = {
+    "red": 3,
+    "yellow": 2,
+    "green": 1
+}
+
+# -----------------------------
+# LIVE DETECTION
+# -----------------------------
+
+def live_traffic_light_detection():
+    # Load model
+    model = YOLO(MODEL_PATH)
 
     # Open camera
-    cap = cv2.VideoCapture(camera_index)
+    cap = cv2.VideoCapture(CAMERA_INDEX)
     if not cap.isOpened():
         raise RuntimeError("Could not open camera")
+
+    # Open serial connection
+    ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+    time.sleep(2)  # Allow Arduino to reset
 
     # FPS tracking
     fps_times = deque(maxlen=30)
     prev_time = time.time()
 
-    print("Live traffic light detection started. Press ESC to quit.")
+    # State machine
+    current_state = "IDLE"
+    last_detected_class = None
+    stable_count = 0
+
+    print("Live CNN → Arduino traffic light detection started")
+    print("Press ESC to quit")
 
     while True:
         ret, frame = cap.read()
@@ -42,8 +69,10 @@ def live_traffic_light_detection(
         prev_time = current_time
         avg_fps = sum(fps_times) / len(fps_times)
 
-        # Run YOLO inference
-        results = model.predict(frame, conf=conf_threshold, verbose=False)
+        # YOLO inference
+        results = model.predict(frame, conf=CONF_THRESHOLD, verbose=False)
+
+        detected_classes = []
 
         for result in results:
             boxes = result.boxes.xyxy.cpu().numpy()
@@ -51,41 +80,61 @@ def live_traffic_light_detection(
             class_ids = result.boxes.cls.cpu().numpy()
 
             for box, score, cls_id in zip(boxes, scores, class_ids):
+                class_name = model.names[int(cls_id)]
+
+                if class_name in CLASS_TO_ARDUINO:
+                    detected_classes.append(class_name)
+
                 xmin, ymin, xmax, ymax = map(int, box)
-                label = f"{model.names[int(cls_id)]} {score:.2f}"
+                label = f"{class_name} {score:.2f}"
 
                 cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-                cv2.putText(
-                    frame,
-                    label,
-                    (xmin, ymin - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    1
-                )
+                cv2.putText(frame, label, (xmin, ymin - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-        # Draw FPS
-        cv2.putText(
-            frame,
-            f"Inference FPS: {avg_fps:.2f}",
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (0, 255, 255),
-            2
-        )
+        # State machine
+        if detected_classes:
+            detected_class = max(detected_classes, key=lambda c: CLASS_PRIORITY[c])
 
-        cv2.imshow("Live Traffic Light Detection", frame)
+            if detected_class == last_detected_class:
+                stable_count += 1
+            else:
+                stable_count = 1
+                last_detected_class = detected_class
 
-        if cv2.waitKey(1) & 0xFF == 27:  # ESC
+            new_state = (
+                CLASS_TO_ARDUINO[detected_class]
+                if stable_count >= STABILITY_FRAMES
+                else current_state
+            )
+        else:
+            stable_count = 0
+            last_detected_class = None
+            new_state = "IDLE"
+
+        # Send to Arduino ONLY on change
+        if new_state != current_state:
+            current_state = new_state
+            ser.write((current_state + "\n").encode())
+            print(f"Sent to Arduino → {current_state}")
+
+        # Display overlays
+        cv2.putText(frame, f"FPS: {avg_fps:.2f}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+        cv2.putText(frame, f"STATE: {current_state}", (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+
+        cv2.imshow("Live Traffic Light Detection (CNN)", frame)
+
+        if cv2.waitKey(1) & 0xFF == 27:
             break
 
+    ser.close()
     cap.release()
     cv2.destroyAllWindows()
 
-live_traffic_light_detection(
-    model_path="best.pt",
-    camera_index=0,   # change to 1,2 if using external camera
-    conf_threshold=0.5
-)
+# -----------------------------
+# RUN
+# -----------------------------
+
+live_traffic_light_detection()
