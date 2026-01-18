@@ -36,6 +36,8 @@ def live_traffic_light_detection(
     while True:
         # Capture frame from Pi camera
         frame = picam2.capture_array()
+        h, w, _ = frame.shape
+        roi = frame[0:int(h * 0.75), :]
 
         # FPS calculation
         current_time = time.time()
@@ -44,7 +46,7 @@ def live_traffic_light_detection(
         avg_fps = sum(fps_times) / len(fps_times)
 
         # Run YOLO inference
-        results = model.predict(frame, conf=conf_threshold, verbose=False)
+        results = model.predict(roi, imgsz=320, conf=conf_threshold, verbose=False)
 
         for result in results:
             boxes = result.boxes.xyxy.cpu().numpy()
