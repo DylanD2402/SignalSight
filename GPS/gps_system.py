@@ -87,7 +87,7 @@ class GPSTrafficLightSystem:
 
     def __init__(
         self,
-        gps_port: str = '/dev/ttyUSB0',
+        gps_port: str = '/dev/gps0',
         gps_baudrate: int = 9600,
         db_path: str = 'data/traffic_lights.db',
         arduino_port: Optional[str] = None,
@@ -577,56 +577,80 @@ class GPSTrafficLightSystem:
 
 
 if __name__ == "__main__":
-    # Demo usage
     import argparse
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
 
     parser = argparse.ArgumentParser(description='GPS Traffic Light System')
     parser.add_argument('--db', default='data/traffic_lights.db',
                         help='Path to traffic light database')
-    parser.add_argument('--gps-port', default='/dev/ttyUSB0',
+    parser.add_argument('--gps-port', default='/dev/gps0',
                         help='GPS serial port')
     parser.add_argument('--arduino-port', default=None,
                         help='Arduino serial port')
+    parser.add_argument('--debug', action='store_true',
+                        help='Enable debug output (distance, zone, position)')
 
     args = parser.parse_args()
 
-    # Callbacks
-    def on_position(pos: GPSPosition):
-        print(f"Position: {pos.latitude:.6f}, {pos.longitude:.6f} "
-              f"({pos.satellites} sats)")
+    # Suppress all logging - we use custom output in debug mode
+    logging.disable(logging.CRITICAL)
 
-    def on_alert(alert: ProximityAlert):
-        print(f"ALERT: Traffic light {alert.light_id} at {alert.distance_m:.1f}m "
-              f"[{alert.zone}]")
-
-    # Create and run system
+    # Create system
     system = GPSTrafficLightSystem(
         gps_port=args.gps_port,
         db_path=args.db,
         arduino_port=args.arduino_port
     )
 
-    system.set_position_callback(on_position)
-    system.set_alert_callback(on_alert)
+    # Only set up callbacks and output in debug mode
+    if args.debug:
+        import sys
+        last_zone = [None]  # Use list to allow modification in nested function
 
-    print("Starting GPS Traffic Light System...")
-    print("Press Ctrl+C to stop\n")
+        def on_alert(alert: ProximityAlert):
+            # Only print new line when zone changes
+            if alert.zone != last_zone[0]:
+                print(f"\nZone changed: {alert.zone.upper()} ({alert.distance_m:.0f}m)")
+                last_zone[0] = alert.zone
+
+        system.set_alert_callback(on_alert)
+
+        print("GPS Traffic Light System (Debug Mode)")
+        print("=" * 40)
+        print(f"GPS Port: {args.gps_port}")
+        print(f"Database: {args.db}")
+        print("Press Ctrl+C to stop\n")
 
     try:
         with system:
             while True:
-                time.sleep(1.0)
+                time.sleep(0.5)
 
-                stats = system.get_stats()
-                closest = system.get_closest_light()
+                if args.debug:
+                    pos = system.get_current_position()
+                    closest = system.get_closest_light()
 
-                if closest:
-                    print(f"Closest light: {closest.distance:.1f}m")
+                    if pos:
+                        speed_kmh = pos.speed * 3.6 if pos.speed else 0
+                        heading_str = f"{pos.heading:.0f}" if pos.heading is not None else "N/A"
+
+                        if closest:
+                            zone = system._get_distance_zone(closest.distance)
+                            status = (f"Pos: {pos.latitude:.5f}, {pos.longitude:.5f} | "
+                                     f"Spd: {speed_kmh:.0f}km/h | Hdg: {heading_str} | "
+                                     f"Sats: {pos.satellites} | "
+                                     f"Light: {closest.distance:.0f}m [{zone.upper()}]")
+                        else:
+                            status = (f"Pos: {pos.latitude:.5f}, {pos.longitude:.5f} | "
+                                     f"Spd: {speed_kmh:.0f}km/h | Hdg: {heading_str} | "
+                                     f"Sats: {pos.satellites} | No lights nearby")
+
+                        # Overwrite same line
+                        sys.stdout.write(f"\r{status:<80}")
+                        sys.stdout.flush()
+                    else:
+                        sys.stdout.write(f"\rWaiting for GPS fix...{' '*50}")
+                        sys.stdout.flush()
 
     except KeyboardInterrupt:
-        print("\nStopped.")
+        if args.debug:
+            print("\n\nStopped.")

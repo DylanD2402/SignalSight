@@ -1,0 +1,21 @@
+# udev rule for GPS module - creates persistent /dev/gps0 symlink
+#
+# This rule creates a symlink so the GPS is always available at /dev/gps0
+# regardless of which USB port it's plugged into.
+#
+# IMPORTANT: You may need to update the ATTRS values below to match your GPS.
+# To find your GPS device info, run:
+#   udevadm info -a -n /dev/ttyUSB0 | grep -E "(idVendor|idProduct|serial)"
+#
+# Install: sudo cp 99-gps.rules /etc/udev/rules.d/
+# Reload:  sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Common GPS modules:
+# - u-blox NEO-M8N (FTDI): idVendor=0403, idProduct=6001
+# - u-blox (native):       idVendor=1546, idProduct=01a8
+
+# FTDI-based GPS (u-blox NEO-M8N with FTDI chip)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="gps0", MODE="0666"
+
+# Native u-blox GPS
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a8", SYMLINK+="gps0", MODE="0666"

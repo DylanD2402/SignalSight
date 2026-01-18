@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import time
 from enum import Enum, auto
+from picamera2 import Picamera2
 
 # -----------------------------
 # System State Definition
@@ -127,11 +128,13 @@ def update_state(prev_state, color, color_conf, time_since_last_detection, has_d
 # Main Real-Time Loop
 # -----------------------------
 def main():
-    cam = cv2.VideoCapture(0)  # adjust index for Pi camera if needed
+    # Initialize Raspberry Pi camera
+    picam2 = Picamera2()
+    config = picam2.create_preview_configuration(main={"format": "RGB888", "size": (640, 480)})
+    picam2.configure(config)
+    picam2.start()
 
-    if not cam.isOpened():
-        print("ERROR: Could not open camera.")
-        return
+    print("Raspberry Pi camera initialized successfully.")
 
     current_state = SystemState.IDLE
     last_detection_time = 0.0
@@ -144,11 +147,8 @@ def main():
 
     while True:
         loop_start = time.time()
-        ret, frame = cam.read()
-        if not ret:
-            print("Camera read failed.")
-            current_state = SystemState.FAULT
-            break
+        # Capture frame from Pi camera
+        frame = picam2.capture_array()
 
         # YOLO inference (you can set verbose=False for speed)
         results = model(frame, verbose=False)
@@ -269,7 +269,7 @@ def main():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    cam.release()
+    picam2.stop()
     cv2.destroyAllWindows()
     print("Exited real-time loop. Final state:", current_state.name)
 
@@ -379,7 +379,7 @@ def process_image(img_path: str):
 
 
 # --- Run on your test image ---
-process_image("images/japan3.jpg")  # replace with your file name
+#process_image("images/japan3.jpg")  # replace with your file name
 
-#if __name__ == "__main__":
-#   main()
+if __name__ == "__main__":
+    main()

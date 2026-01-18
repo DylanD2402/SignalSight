@@ -3,7 +3,21 @@ import time
 import serial
 from collections import deque
 from ultralytics import YOLO
+from picamera2 import Picamera2
 
+def live_traffic_light_detection(
+    model_path: str,
+    camera_index: int = 0,
+    conf_threshold: float = 0.5
+):
+    """
+    Run live traffic light detection using Raspberry Pi camera and display inference FPS.
+
+    Args:
+        model_path (str): Path to trained YOLO model (.pt)
+        camera_index (int): Not used (kept for compatibility)
+        conf_threshold (float): Confidence threshold
+    """
 # -----------------------------
 # CONFIGURATION
 # -----------------------------
@@ -37,6 +51,11 @@ def live_traffic_light_detection():
     # Load model
     model = YOLO(MODEL_PATH)
 
+    # Initialize Raspberry Pi camera
+    picam2 = Picamera2()
+    config = picam2.create_preview_configuration(main={"format": "RGB888", "size": (640, 480)})
+    picam2.configure(config)
+    picam2.start()
     # Open camera
     cap = cv2.VideoCapture(CAMERA_INDEX)
     if not cap.isOpened():
@@ -59,9 +78,8 @@ def live_traffic_light_detection():
     print("Press ESC to quit")
 
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        # Capture frame from Pi camera
+        frame = picam2.capture_array()
 
         # FPS calculation
         current_time = time.time()
@@ -129,6 +147,14 @@ def live_traffic_light_detection():
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
+    picam2.stop()
+    cv2.destroyAllWindows()
+
+live_traffic_light_detection(
+    model_path="best.pt",
+    camera_index=0,   # parameter not used for Pi camera
+    conf_threshold=0.5
+)
     ser.close()
     cap.release()
     cv2.destroyAllWindows()
