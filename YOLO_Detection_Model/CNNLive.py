@@ -71,7 +71,7 @@ def live_traffic_light_detection(headless=False, save_interval=30):
         while True:
             frame = picam2.capture_array()
             h, w, _ = frame.shape
-            roi = frame[0:int(h, 0.75), :]
+            roi = frame[0:int(h * 0.75), :]
 
             # FPS calculation
             current_time = time.time()
