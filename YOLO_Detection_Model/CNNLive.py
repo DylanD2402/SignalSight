@@ -13,8 +13,8 @@ from picamera2 import Picamera2
 MODEL_PATH = "best.pt"
 CAMERA_INDEX = 0
 
-SERIAL_PORT = "/dev/ttyUSB0"   # CHANGE THIS
-BAUD_RATE = 9600
+SERIAL_PORT = "/dev/ttyACM0"   # CHANGE THIS
+BAUD_RATE = 115200
 
 CONF_THRESHOLD = 0.5
 STABILITY_FRAMES = 5
@@ -70,6 +70,8 @@ def live_traffic_light_detection(headless=False, save_interval=30):
     try:
         while True:
             frame = picam2.capture_array()
+            h, w, _ = frame.shape
+            roi = frame[0:int(h, 0.75), :]
 
             # FPS calculation
             current_time = time.time()
@@ -78,7 +80,7 @@ def live_traffic_light_detection(headless=False, save_interval=30):
             avg_fps = sum(fps_times) / len(fps_times)
 
             # YOLO inference
-            results = model.predict(frame, conf=CONF_THRESHOLD, verbose=False)
+            results = model.predict(roi, imgsz=320, conf=CONF_THRESHOLD, verbose=False)
 
             detected_classes = []
 
