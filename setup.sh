@@ -51,19 +51,15 @@ echo "Installing OpenCV dependencies..."
 sudo apt-get install -y \
     libopencv-dev \
     python3-opencv \
-    libatlas-base-dev \
     libhdf5-dev \
-    libhdf5-serial-dev \
     libharfbuzz0b \
     libwebp7 \
     libtiff6 \
-    libjasper1 \
-    libilmbase25 \
-    libopenexr25 \
     libgstreamer1.0-0 \
     libavcodec-dev \
     libavformat-dev \
-    libswscale-dev
+    libswscale-dev \
+    libatlas3-base
 
 # Raspberry Pi specific packages
 if [ "$IS_RPI" = true ]; then
