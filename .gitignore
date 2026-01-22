@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment-specific
+imx/
+imxenv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+*.pt.bak
+*.weights

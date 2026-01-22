@@ -113,18 +113,30 @@ fi
 
 echo "Python dependencies installed."
 
-# Step 6: Setup GPS subsystem (if needed)
+# Step 6: Setup GPS device and database
 echo ""
-echo "[6/6] Setting up GPS subsystem..."
-if [ -d "GPS" ]; then
-    cd GPS
-    if [ -f "setup.sh" ]; then
-        echo "Running GPS-specific setup..."
-        bash setup.sh
-    fi
-    cd "$SCRIPT_DIR"
+echo "[6/6] Setting up GPS device and database..."
+
+# Setup GPS device symlink
+if [ -f "setup/99-gps.rules" ]; then
+    echo "Installing GPS udev rule..."
+    sudo cp setup/99-gps.rules /etc/udev/rules.d/99-gps.rules
+    sudo chmod 644 /etc/udev/rules.d/99-gps.rules
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    echo "GPS udev rule installed. Device will be available at /dev/gps0"
 else
-    echo "GPS directory not found. Skipping GPS setup."
+    echo "Warning: setup/99-gps.rules not found. Skipping GPS symlink setup."
+fi
+
+# Check for GPS database
+if [ -d "GPS" ]; then
+    if [ -f "GPS/data/traffic_lights.db" ]; then
+        echo "GPS database found: GPS/data/traffic_lights.db"
+    else
+        echo "GPS database not found. You can create it later by running:"
+        echo "  cd GPS && python setup/database_setup.py --region ontario"
+    fi
 fi
 
 # Done
