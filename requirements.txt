@@ -1,0 +1,25 @@
+# SignalSight - Traffic Light Detection System
+# Main project dependencies
+
+# YOLO Detection Model
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Raspberry Pi Camera (install separately on Pi - see setup.sh)
+# picamera2
+
+# Hardware Communication
+pyserial>=3.5
+
+# GPS System Dependencies
+pynmea2>=1.19.0
+requests>=2.31.0
+osmium>=3.7.0
+
+# Testing
+pytest>=7.0.0
+robotframework>=6.0.0
+
+# Development
