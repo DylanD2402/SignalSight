@@ -46,20 +46,15 @@ sudo apt-get install -y \
     sqlite3 \
     git
 
-# OpenCV dependencies
-echo "Installing OpenCV dependencies..."
+# OpenCV and runtime dependencies
+echo "Installing OpenCV and runtime dependencies..."
 sudo apt-get install -y \
-    libopencv-dev \
     python3-opencv \
-    libhdf5-dev \
+    libatlas3-base \
+    libgstreamer1.0-0 \
     libharfbuzz0b \
     libwebp7 \
-    libtiff6 \
-    libgstreamer1.0-0 \
-    libavcodec-dev \
-    libavformat-dev \
-    libswscale-dev \
-    libatlas3-base
+    libtiff6
 
 # Raspberry Pi specific packages
 if [ "$IS_RPI" = true ]; then
