@@ -22,4 +22,5 @@ osmium>=3.7.0
 pytest>=7.0.0
 robotframework>=6.0.0
 
-# Development
+# Development / Type Checking
+pandas-stubs  # Required by types-seaborn

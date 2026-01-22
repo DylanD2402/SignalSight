@@ -61,7 +61,7 @@ if [ "$IS_RPI" = true ]; then
     echo "Installing Raspberry Pi specific packages..."
     sudo apt-get install -y \
         python3-picamera2 \
-        libcamera-apps \
+        rpicam-apps \
         python3-libcamera
 fi
 
