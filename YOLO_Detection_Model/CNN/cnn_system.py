@@ -54,7 +54,7 @@ def has_display():
 # MAIN FUNCTION
 # -----------------------------
 
-def live_traffic_light_detection(state_callback=None, no_arduino=True, no_display=True, stop_event=None):
+def live_traffic_light_detection(state_callback=None, no_arduino=True, no_display=True, stop_event=None, debug=False):
     # Load YOLO model
     model = YOLO(MODEL_PATH)
 
@@ -83,17 +83,19 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
             print("No display detected - running in headless mode")
 
     # -----------------------------
-    # Arduino serial (optional)
+    # Arduino serial (auto-detect)
     # -----------------------------
     ser = None
-    if not no_arduino:
+    if not no_arduino and os.path.exists(SERIAL_PORT):
         try:
             ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
             time.sleep(2)
-            print("Arduino serial connected")
+            print(f"Arduino connected on {SERIAL_PORT}")
         except Exception as e:
-            print(f"WARNING: Could not connect to Arduino: {e}")
+            print(f"WARNING: Could not open Arduino: {e}")
             print("Running without Arduino")
+    elif not no_arduino:
+        print(f"Arduino not detected ({SERIAL_PORT} not found)")
 
     fps_times = deque(maxlen=30)
     prev_time = time.time()
@@ -101,7 +103,7 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
     current_state = "IDLE"
     missed_frames = 0
 
-    if not no_arduino or not no_display:
+    if not no_arduino or not no_display or debug:
         print("Traffic light detection started")
 
     try:
@@ -146,6 +148,7 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
             # -----------------------------
             # STATE MACHINE
             # -----------------------------
+            detected_class = None
             if detected:
                 missed_frames = 0
                 detected_class = max(
@@ -157,13 +160,18 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
                 missed_frames += 1
                 new_state = "IDLE" if missed_frames >= MAX_MISSED_FRAMES else current_state
 
-            # Send to Arduino or callback
+            # Update state
             if new_state != current_state:
                 current_state = new_state
 
+            # Debug output
+            if debug:
+                detection_str = ", ".join([f"{c}:{s:.2f}" for c, s in detected]) if detected else "None"
+                print(f"[{time.strftime('%H:%M:%S')}] State: {current_state:15s} | Detected: {detection_str:30s} | FPS: {avg_fps:5.1f}")
+
             # Call callback if provided (for integration mode)
             if state_callback:
-                confidence = max((s for c, s in detected if c == detected_class), default=0.0) if detected else 0.0
+                confidence = max((s for c, s in detected if c == detected_class), default=0.0) if detected and detected_class else 0.0
                 state_callback({
                     'state': current_state,
                     'confidence': confidence,
@@ -171,13 +179,10 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
                 })
 
             # Send to Arduino if standalone mode
-            if not no_arduino and new_state != current_state:
-                if ser is not None:
-                    ser.write((current_state + "\n").encode())
+            if not no_arduino and ser is not None:
+                ser.write((current_state + "\n").encode())
+                if not debug:  # Only print if not in debug mode (debug shows more info)
                     print(f"[{time.strftime('%H:%M:%S')}] Sent → {current_state}")
-                else:
-                    if not state_callback:  # Only print if not in integration mode
-                        print(f"[{time.strftime('%H:%M:%S')}] State → {current_state} (FPS: {avg_fps:.1f})")
 
             # Display annotated frame if display is available
             if display_available:
@@ -209,5 +214,17 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
 # RUN
 # -----------------------------
 if __name__ == "__main__":
-    live_traffic_light_detection()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Traffic Light Detection System")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument("--display", action="store_true", help="Show video display (if available)")
+
+    args = parser.parse_args()
+
+    live_traffic_light_detection(
+        no_arduino=False,  # Auto-detect Arduino
+        no_display=not args.display,
+        debug=args.debug
+    )
 
