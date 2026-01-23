@@ -61,7 +61,7 @@ def live_traffic_light_detection():
     current_state = "IDLE"
     missed_frames = 0
 
-    print("🚦 Raspberry Pi CNN → Arduino traffic light system started")
+    print("Raspberry Pi CNN -> Arduino traffic light system started")
 
     while True:
         # Capture frame
@@ -117,7 +117,7 @@ def live_traffic_light_detection():
         if new_state != current_state:
             current_state = new_state
             ser.write((current_state + "\n").encode())
-            print(f"➡️ Sent to Arduino: {current_state}")
+            print(f"Sent to Arduino: {current_state}")
 
         # Debug display (optional – disable for headless)
         cv2.putText(frame, f"FPS: {avg_fps:.2f}", (10, 30),

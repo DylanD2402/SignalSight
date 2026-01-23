@@ -47,8 +47,42 @@ This will:
 source venv/bin/activate
 ```
 
-### 2. Run Traffic Light Detection
+### 2. Run Integrated System (Recommended)
 
+The integrated system runs both CV detection and GPS in parallel:
+
+```bash
+python signalsight.py
+```
+
+With debug mode (shows live status updates):
+```bash
+python signalsight.py --debug
+```
+
+Run without Arduino (no-data-send mode):
+```bash
+python signalsight.py --no-arduino
+```
+
+Custom Arduino port:
+```bash
+python signalsight.py --arduino-port /dev/ttyUSB0
+```
+
+**The integrated system:**
+- **Uses existing code** - Imports and runs CNNLivecopy3.py and GPS logic
+- **Acts as glue** - Coordinates execution without duplicating logic
+- **Updates propagate** - Changes to CV/GPS code automatically apply
+- **CV priority** - CV detection state takes priority over GPS
+- **Centralized Arduino** - Single serial connection, no conflicts
+- **Auto-detection** - Detects Arduino and runs in no-data-send mode if not connected
+- **Headless support** - No display required for operation
+- **Debug mode** - Live updating status for both CV and GPS
+
+### 3. Run Individual Components
+
+**Traffic Light Detection Only:**
 ```bash
 cd YOLO_Detection_Model/CNN
 python CNNLivecopy3.py
@@ -61,8 +95,7 @@ The system will automatically:
 
 Press 'q' to quit (when display is available) or Ctrl+C for headless mode.
 
-### 3. Run GPS System
-
+**GPS System Only:**
 ```bash
 cd GPS
 python gps_system.py
@@ -157,6 +190,28 @@ deactivate
 ```bash
 source venv/bin/activate
 pip install --upgrade -r requirements.txt
+```
+
+### Run as System Service (Optional)
+
+To run SignalSight automatically on boot:
+
+```bash
+# Copy service file
+sudo cp setup/signalsight.service /etc/systemd/system/
+
+# Edit the service file if your username is different from 'signalsight'
+sudo nano /etc/systemd/system/signalsight.service
+
+# Enable and start the service
+sudo systemctl enable signalsight.service
+sudo systemctl start signalsight.service
+
+# Check status
+sudo systemctl status signalsight.service
+
+# View logs
+sudo journalctl -u signalsight.service -f
 ```
 
 ## Detection Methods
