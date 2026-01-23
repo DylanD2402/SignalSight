@@ -1,0 +1,10 @@
+path: lisa_yolo
+train: images/train
+val: images/val
+
+names:
+  0: red
+  1: yellow
+  2: green
+  3: red_arrow
+  4: green_arrow

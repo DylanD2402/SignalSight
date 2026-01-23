@@ -1,0 +1,17 @@
+[Unit]
+Description=SignalSight Traffic Light Detection System
+After=network.target
+
+[Service]
+Type=simple
+User=signalsight
+WorkingDirectory=/home/signalsight/SignalSight
+Environment="PATH=/home/signalsight/SignalSight/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/signalsight/SignalSight/venv/bin/python /home/signalsight/SignalSight/signalsight.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

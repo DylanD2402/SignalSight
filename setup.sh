@@ -172,6 +172,6 @@ echo "   cd tests"
 echo "   ./run_all_tests.sh"
 echo ""
 if groups | grep -qv dialout; then
-    echo "⚠️  IMPORTANT: You need to log out and back in for serial port access!"
+    echo "IMPORTANT: You need to log out and back in for serial port access!"
 fi
 echo ""

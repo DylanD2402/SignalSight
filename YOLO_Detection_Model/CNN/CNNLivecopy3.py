@@ -10,7 +10,7 @@ from picamera2 import Picamera2
 # CONFIGURATION
 # -----------------------------
 
-MODEL_PATH = "best.pt"
+MODEL_PATH = "../best.pt"  # Model is in parent directory
 
 SERIAL_PORT = "/dev/ttyACM0"   # Arduino on Pi
 BAUD_RATE = 9600
@@ -54,7 +54,7 @@ def has_display():
 # MAIN FUNCTION
 # -----------------------------
 
-def live_traffic_light_detection():
+def live_traffic_light_detection(state_callback=None, no_arduino=True, no_display=True, stop_event=None):
     # Load YOLO model
     model = YOLO(MODEL_PATH)
 
@@ -73,23 +73,27 @@ def live_traffic_light_detection():
     # -----------------------------
     # Display detection
     # -----------------------------
-    display_available = has_display()
-    if display_available:
-        print("🖥️  Display detected - showing live feed")
+    if no_display:
+        display_available = False
     else:
-        print("🔲 No display detected - running in headless mode")
+        display_available = has_display()
+        if display_available:
+            print("Display detected - showing live feed")
+        else:
+            print("No display detected - running in headless mode")
 
     # -----------------------------
     # Arduino serial (optional)
     # -----------------------------
     ser = None
-    try:
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-        time.sleep(2)
-        print("✅ Arduino serial connected")
-    except Exception as e:
-        print(f"⚠️  Could not connect to Arduino: {e}")
-        print("Running without Arduino")
+    if not no_arduino:
+        try:
+            ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+            time.sleep(2)
+            print("Arduino serial connected")
+        except Exception as e:
+            print(f"WARNING: Could not connect to Arduino: {e}")
+            print("Running without Arduino")
 
     fps_times = deque(maxlen=30)
     prev_time = time.time()
@@ -97,10 +101,14 @@ def live_traffic_light_detection():
     current_state = "IDLE"
     missed_frames = 0
 
-    print("🚦 Headless Raspberry Pi CNN → Arduino system started")
+    if not no_arduino or not no_display:
+        print("Traffic light detection started")
 
     try:
         while True:
+            # Check stop event if provided
+            if stop_event and stop_event.is_set():
+                break
             # Capture frame
             frame = picam2.capture_array()
 
@@ -149,14 +157,27 @@ def live_traffic_light_detection():
                 missed_frames += 1
                 new_state = "IDLE" if missed_frames >= MAX_MISSED_FRAMES else current_state
 
-            # Send to Arduino only on change
+            # Send to Arduino or callback
             if new_state != current_state:
                 current_state = new_state
+
+            # Call callback if provided (for integration mode)
+            if state_callback:
+                confidence = max((s for c, s in detected if c == detected_class), default=0.0) if detected else 0.0
+                state_callback({
+                    'state': current_state,
+                    'confidence': confidence,
+                    'fps': avg_fps
+                })
+
+            # Send to Arduino if standalone mode
+            if not no_arduino and new_state != current_state:
                 if ser is not None:
                     ser.write((current_state + "\n").encode())
                     print(f"[{time.strftime('%H:%M:%S')}] Sent → {current_state}")
                 else:
-                    print(f"[{time.strftime('%H:%M:%S')}] State → {current_state} (FPS: {avg_fps:.1f})")
+                    if not state_callback:  # Only print if not in integration mode
+                        print(f"[{time.strftime('%H:%M:%S')}] State → {current_state} (FPS: {avg_fps:.1f})")
 
             # Display annotated frame if display is available
             if display_available:
@@ -174,7 +195,7 @@ def live_traffic_light_detection():
             time.sleep(0.01)
 
     except KeyboardInterrupt:
-        print("\n🛑 Stopping system...")
+        print("\nStopping system...")
 
     finally:
         if ser is not None:
@@ -182,7 +203,7 @@ def live_traffic_light_detection():
         picam2.stop()
         if display_available:
             cv2.destroyAllWindows()
-        print("✅ Clean shutdown complete")
+        print("Clean shutdown complete")
 
 # -----------------------------
 # RUN
