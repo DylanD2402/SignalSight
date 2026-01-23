@@ -121,16 +121,20 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
             prev_time = current_time
             avg_fps = sum(fps_times) / len(fps_times)
 
+            # ROI optimization: Only process top 75% of frame (traffic lights are in upper portion)
+            h, w, _ = frame.shape
+            roi = frame[0:int(h * 0.75), :]
+
             # YOLO inference (optimized for speed)
             inference_start = time.perf_counter() if debug else None
             results = model.predict(
-                frame,
+                roi,
                 conf=CONF_THRESHOLD,
                 imgsz=INFERENCE_SIZE,
                 verbose=False,
                 device='cpu',
                 half=False,  # Full precision (half-precision not supported on CPU)
-                max_det=10   # Max 10 detections (traffic lights) - reduces processing
+                # max_det=10   # Max 10 detections (traffic lights) - reduces processing
             )
             inference_time = (time.perf_counter() - inference_start) * 1000 if debug else 0
 
