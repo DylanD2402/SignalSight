@@ -90,7 +90,7 @@ class GPSTrafficLightSystem:
         gps_port: str = '/dev/gps0',
         gps_baudrate: int = 9600,
         db_path: str = 'data/traffic_lights.db',
-        arduino_port: Optional[str] = None,
+        arduino_port: str = '/dev/ttyACM0',
         arduino_baudrate: int = 115200,
         query_interval: float = 0.5,  # 2Hz queries
         search_radius: float = 500.0,  # meters
