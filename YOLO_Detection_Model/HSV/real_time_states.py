@@ -420,8 +420,8 @@ def main():
     # -----------------------------
     try:
         ser = serial.Serial(
-            port="/dev/tty.usbmodem1101",  # 🔁 CHANGE THIS
-            baudrate=9600,
+            port="/dev/ttyACM0",  # 🔁 CHANGE THIS
+            baudrate=115200,
             timeout=1
         )
         time.sleep(2)  # allow Arduino reset

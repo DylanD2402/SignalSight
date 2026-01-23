@@ -10,10 +10,10 @@ from picamera2 import Picamera2
 # CONFIGURATION
 # -----------------------------
 
-MODEL_PATH = "../best.pt"  # Model is in parent directory
+MODEL_PATH = "best.pt"  # Model is in same directory
 
 SERIAL_PORT = "/dev/ttyACM0"   # Arduino on Pi
-BAUD_RATE = 9600
+BAUD_RATE = 115200
 
 CONF_THRESHOLD = 0.5
 MAX_MISSED_FRAMES = 3
