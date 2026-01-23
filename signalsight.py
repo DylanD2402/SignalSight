@@ -106,7 +106,7 @@ class ArduinoInterface:
 
 
 class CVModule:
-    """Wrapper for CV detection module (CNNLivecopy3.py)."""
+    """Wrapper for CV detection module (cnn_system.py)."""
 
     def __init__(self, state_queue: queue.Queue, debug: bool = False):
         self.state_queue = state_queue
@@ -121,7 +121,7 @@ class CVModule:
         self.thread.start()
 
     def _cv_callback(self, cv_data):
-        """Callback function called by CNNLivecopy3.py with detection results."""
+        """Callback function called by cnn_system.py with detection results."""
         try:
             self.state_queue.put_nowait({
                 'type': 'CV',
@@ -133,7 +133,7 @@ class CVModule:
             pass
 
     def _run(self):
-        """Run CV detection by importing and calling CNNLivecopy3.py."""
+        """Run CV detection by importing and calling cnn_system.py."""
         try:
             # Save current directory
             original_dir = os.getcwd()
@@ -143,13 +143,13 @@ class CVModule:
 
             # Import the actual CV module
             sys.path.insert(0, os.getcwd())
-            import CNNLivecopy3
+            import cnn_system
 
             if self.debug:
-                print("CV Module started (using CNNLivecopy3.py)")
+                print("CV Module started (using cnn_system.py)")
 
-            # Call the actual function from CNNLivecopy3.py
-            CNNLivecopy3.live_traffic_light_detection(
+            # Call the actual function from cnn_system.py
+            cnn_system.live_traffic_light_detection(
                 state_callback=self._cv_callback,
                 no_arduino=True,  # Integration handles Arduino
                 no_display=True,  # Integration handles display
