@@ -17,6 +17,7 @@ BAUD_RATE = 115200
 
 CONF_THRESHOLD = 0.5
 MAX_MISSED_FRAMES = 3
+INFERENCE_SIZE = 320  # YOLO inference image size (smaller = faster, less accurate)
 
 CLASS_TO_ARDUINO = {
     "red": "ACTIVE_RED",
@@ -59,16 +60,16 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
     model = YOLO(MODEL_PATH)
 
     # -----------------------------
-    # Pi Camera setup
+    # Pi Camera setup (optimized for Pi 5)
     # -----------------------------
     picam2 = Picamera2()
-    picam2.configure(
-        picam2.create_preview_configuration(
-            main={"format": "RGB888", "size": (640, 480)}
-        )
+    config = picam2.create_preview_configuration(
+        main={"format": "RGB888", "size": (640, 480)},
+        buffer_count=4  # Reduce buffer count for lower latency
     )
+    picam2.configure(config)
     picam2.start()
-    time.sleep(1)
+    time.sleep(0.5)  # Reduced warmup time
 
     # -----------------------------
     # Display detection
@@ -120,11 +121,23 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
             prev_time = current_time
             avg_fps = sum(fps_times) / len(fps_times)
 
-            # YOLO inference
-            results = model.predict(frame, conf=CONF_THRESHOLD, verbose=False)
+            # YOLO inference (optimized for speed)
+            inference_start = time.perf_counter() if debug else None
+            results = model.predict(
+                frame,
+                conf=CONF_THRESHOLD,
+                imgsz=INFERENCE_SIZE,
+                verbose=False,
+                device='cpu',
+                half=False,  # Full precision (half-precision not supported on CPU)
+                max_det=10   # Max 10 detections (traffic lights) - reduces processing
+            )
+            inference_time = (time.perf_counter() - inference_start) * 1000 if debug else 0
 
             detected = []  # (class_name, confidence)
-            annotated_frame = frame.copy() if display_available else None
+            annotated_frame = None
+            if display_available:
+                annotated_frame = frame.copy()
 
             for result in results:
                 scores = result.boxes.conf.cpu().numpy()
@@ -167,7 +180,7 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
             # Debug output
             if debug:
                 detection_str = ", ".join([f"{c}:{s:.2f}" for c, s in detected]) if detected else "None"
-                print(f"[{time.strftime('%H:%M:%S')}] State: {current_state:15s} | Detected: {detection_str:30s} | FPS: {avg_fps:5.1f}")
+                print(f"[{time.strftime('%H:%M:%S')}] State: {current_state:15s} | Detected: {detection_str:30s} | FPS: {avg_fps:5.1f} | Inference: {inference_time:5.1f}ms")
 
             # Call callback if provided (for integration mode)
             if state_callback:
