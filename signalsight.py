@@ -161,8 +161,10 @@ class CVModule:
 
         except Exception as e:
             print(f"ERROR: CV Module Error: {e}")
-            import traceback
-            traceback.print_exc()
+            print("CV detection will not be available")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
 
     def stop(self):
         """Stop CV module."""
@@ -182,28 +184,32 @@ class GPSModule:
     def start(self):
         """Start GPS detection by importing and running gps_system.py."""
         try:
-            # Save current directory
-            original_dir = os.getcwd()
-
-            # Change to GPS module directory
-            os.chdir(os.path.join(SCRIPT_DIR, 'GPS'))
-
             # Import the actual GPS modules
-            sys.path.insert(0, os.getcwd())
             from gps_system import GPSTrafficLightSystem
             import logging
 
             # Suppress GPS system logging (integration handles display)
             logging.disable(logging.CRITICAL)
 
-            GPS_PORT = "/dev/gps0"
+            # Try multiple GPS device paths
+            GPS_DEVICES = ["/dev/gps0", "/dev/serial0", "/dev/ttyAMA0", "/dev/ttyS0"]
+            gps_port = None
+            for device in GPS_DEVICES:
+                if os.path.exists(device):
+                    gps_port = device
+                    break
+
+            if not gps_port:
+                print("WARNING: No GPS device found, running without GPS")
+                return
+
             GPS_BAUDRATE = 9600
             PROXIMITY_THRESHOLD = 100  # meters
-            DB_PATH = "data/traffic_lights.db"
+            DB_PATH = os.path.join(SCRIPT_DIR, "GPS/data/traffic_lights.db")
 
             # Create GPS system (no Arduino - integration handles it)
             self.gps_system = GPSTrafficLightSystem(
-                gps_port=GPS_PORT,
+                gps_port=gps_port,
                 gps_baudrate=GPS_BAUDRATE,
                 db_path=DB_PATH,
                 arduino_port=None,  # Integration layer handles Arduino
@@ -246,17 +252,15 @@ class GPSModule:
             # Start the GPS system (it manages its own threads)
             if self.gps_system.start():
                 if self.debug:
-                    print("GPS Module started (using gps_system.py)")
+                    print(f"GPS Module started on {gps_port}")
             else:
-                print("WARNING: GPS Module failed to start")
-
-            # Restore directory
-            os.chdir(original_dir)
+                print("WARNING: GPS Module failed to start, continuing without GPS")
+                self.gps_system = None
 
         except Exception as e:
-            print(f"ERROR: GPS Module Error: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"WARNING: GPS Module Error: {e}")
+            print("Continuing without GPS")
+            self.gps_system = None
 
     def stop(self):
         """Stop GPS module."""
@@ -400,11 +404,13 @@ class SignalSight:
 
     def stop(self):
         """Stop the system."""
+        if not self.running:
+            return  # Already stopped
         self.running = False
         self.cv_module.stop()
         self.gps_module.stop()
         self.arduino.close()
-        print("\nSignalSight stopped")
+        print("Clean shutdown complete")
 
 
 def main():
