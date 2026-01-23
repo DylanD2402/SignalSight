@@ -195,11 +195,12 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
                     'fps': avg_fps
                 })
 
-            # Send to Arduino if standalone mode
+            # Send to Arduino if standalone mode (no GPS data in standalone)
             if not no_arduino and ser is not None:
-                ser.write((current_state + "\n").encode())
+                message = f"STATE={current_state} SPEED=0 DIST=0\n"
+                ser.write(message.encode())
                 if not debug:  # Only print if not in debug mode (debug shows more info)
-                    print(f"[{time.strftime('%H:%M:%S')}] Sent → {current_state}")
+                    print(f"[{time.strftime('%H:%M:%S')}] Sent → {message.strip()}")
 
             # Display annotated frame if display is available
             if display_available:

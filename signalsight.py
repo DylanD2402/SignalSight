@@ -74,19 +74,19 @@ class ArduinoInterface:
             print(f"WARNING: Arduino not connected: {e}")
             print("   Running in no-data-send mode")
 
-    def send_state(self, state: str, distance: int = 0, speed: int = 0) -> bool:
+    def send_data(self, state: str, speed: int, distance: int) -> bool:
         """
-        Send state to Arduino. Thread-safe.
+        Send complete data to Arduino. Thread-safe.
 
-        Format: STATE,DISTANCE,SPEED\n
-        Example: ACTIVE_RED,45,60\n
+        Format: STATE=ACTIVE_RED SPEED={speed} DIST={distance}\n
+        Example: STATE=ACTIVE_RED SPEED=60 DIST=45\n
         """
         if not self.connected or self.ser is None or self.no_arduino:
             return False
 
         with self.lock:
             try:
-                message = f"{state},{distance},{speed}\n"
+                message = f"STATE={state} SPEED={speed} DIST={distance}\n"
                 self.ser.write(message.encode('utf-8'))
                 self.ser.flush()
                 return True
@@ -323,6 +323,10 @@ class SignalSight:
 
     def _coordination_loop(self):
         """Main loop - processes states and sends to Arduino."""
+        last_sent_state = None
+        last_sent_speed = None
+        last_sent_distance = None
+
         while self.running:
             try:
                 # Get state updates
@@ -345,16 +349,25 @@ class SignalSight:
                 except queue.Empty:
                     pass
 
-                # Send to Arduino (CV state takes priority)
-                if self.arduino.send_state(
-                    self.system_state.cv_state,
-                    self.system_state.gps_distance,
-                    self.system_state.gps_speed
-                ):
-                    if not self.debug:
-                        print(f"[{time.strftime('%H:%M:%S')}] → Arduino: "
-                              f"{self.system_state.cv_state},{self.system_state.gps_distance}m,"
-                              f"{self.system_state.gps_speed}km/h")
+                # Send to Arduino if any value changed
+                if (self.system_state.cv_state != last_sent_state or
+                    self.system_state.gps_speed != last_sent_speed or
+                    self.system_state.gps_distance != last_sent_distance):
+
+                    if self.arduino.send_data(
+                        self.system_state.cv_state,
+                        self.system_state.gps_speed,
+                        self.system_state.gps_distance
+                    ):
+                        last_sent_state = self.system_state.cv_state
+                        last_sent_speed = self.system_state.gps_speed
+                        last_sent_distance = self.system_state.gps_distance
+
+                        if not self.debug:
+                            print(f"[{time.strftime('%H:%M:%S')}] → Arduino: "
+                                  f"STATE={self.system_state.cv_state} "
+                                  f"SPEED={self.system_state.gps_speed} "
+                                  f"DIST={self.system_state.gps_distance}")
 
                 # Debug display
                 if self.debug:
@@ -382,7 +395,7 @@ class SignalSight:
         """Format CV status line."""
         state_str = self.system_state.cv_state.replace("ACTIVE_", "")
 
-        arduino_str = f"{self.system_state.cv_state},{self.system_state.gps_distance}m,{self.system_state.gps_speed}km/h"
+        arduino_str = f"STATE={self.system_state.cv_state} SPEED={self.system_state.gps_speed} DIST={self.system_state.gps_distance}"
         if not self.arduino.connected:
             arduino_str = "NOT CONNECTED"
 
