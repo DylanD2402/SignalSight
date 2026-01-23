@@ -71,7 +71,7 @@ python signalsight.py --arduino-port /dev/ttyUSB0
 ```
 
 **The integrated system:**
-- **Uses existing code** - Imports and runs CNNLivecopy3.py and GPS logic
+- **Uses existing code** - Imports and runs CV and GPS logic
 - **Acts as glue** - Coordinates execution without duplicating logic
 - **Updates propagate** - Changes to CV/GPS code automatically apply
 - **CV priority** - CV detection state takes priority over GPS
@@ -85,7 +85,7 @@ python signalsight.py --arduino-port /dev/ttyUSB0
 **Traffic Light Detection Only:**
 ```bash
 cd YOLO_Detection_Model/CNN
-python CNNLivecopy3.py
+python cnn_system.py
 ```
 
 The system will automatically:
@@ -138,7 +138,7 @@ SignalSight/
 **CNN-based detection** (recommended):
 ```bash
 cd YOLO_Detection_Model/CNN
-python CNNLivecopy3.py
+python cnn_system.py
 ```
 
 **HSV-based detection**:
