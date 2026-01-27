@@ -215,7 +215,8 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
                     break
 
             # Optional: throttle loop slightly to stabilize CPU usage
-            time.sleep(0.01)
+            # removed for testing purposes
+            # time.sleep(0.01)
 
     except KeyboardInterrupt:
         print("\nStopping system...")
