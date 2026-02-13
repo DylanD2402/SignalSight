@@ -103,6 +103,39 @@ echo "This may take several minutes, especially on Raspberry Pi..."
 # Install requirements
 pip install -r requirements.txt
 
+# CRITICAL: Verify numpy version compatibility with picamera2/simplejpeg
+# These system packages are compiled against numpy 1.x and will fail with numpy 2.x
+echo ""
+echo "Verifying numpy compatibility..."
+
+NUMPY_VERSION=$(python -c "import numpy; print(numpy.__version__)" 2>/dev/null || echo "not found")
+NUMPY_LOCATION=$(python -c "import numpy; print(numpy.__file__)" 2>/dev/null || echo "not found")
+
+if [[ "$NUMPY_VERSION" == 2.* ]]; then
+    echo "WARNING: Detected numpy 2.x ($NUMPY_VERSION) which is incompatible with picamera2!"
+    echo "Removing numpy from venv to use system numpy 1.x..."
+
+    # Remove numpy 2.x from venv
+    rm -rf venv/lib/python*/site-packages/numpy
+    rm -rf venv/lib/python*/site-packages/numpy-*.dist-info
+    rm -rf venv/lib/python*/site-packages/numpy.libs
+
+    # Verify fix
+    NUMPY_VERSION=$(python -c "import numpy; print(numpy.__version__)" 2>/dev/null || echo "not found")
+    NUMPY_LOCATION=$(python -c "import numpy; print(numpy.__file__)" 2>/dev/null || echo "not found")
+
+    if [[ "$NUMPY_VERSION" == 1.* ]]; then
+        echo "✓ Fixed: Now using system numpy $NUMPY_VERSION"
+    else
+        echo "ERROR: Could not resolve numpy version issue!"
+        echo "Please check your installation manually."
+    fi
+elif [[ "$NUMPY_VERSION" == 1.* ]]; then
+    echo "✓ Numpy version OK: $NUMPY_VERSION (compatible with picamera2)"
+else
+    echo "⚠ Warning: Could not detect numpy version"
+fi
+
 # On non-Pi systems, we can install picamera2 via pip if needed (for testing)
 # On Pi, we rely on the system package installed earlier
 if [ "$IS_RPI" = false ]; then
