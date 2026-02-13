@@ -38,18 +38,8 @@ CLASS_PRIORITY = {
 def has_display():
     """Detect if a display is available."""
     # Check DISPLAY environment variable (Linux/Unix)
-    if os.environ.get('DISPLAY'):
-        try:
-            # Try to create a window to verify display actually works
-            test_img = cv2.imread('/dev/null')  # Create dummy image
-            if test_img is None:
-                test_img = [[0]]
-            cv2.namedWindow('test', cv2.WINDOW_NORMAL)
-            cv2.destroyWindow('test')
-            return True
-        except:
-            return False
-    return False
+    # Don't try to create test windows as this can interfere with OpenCV initialization
+    return bool(os.environ.get('DISPLAY'))
 
 # -----------------------------
 # MAIN FUNCTION
@@ -76,12 +66,14 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
     # -----------------------------
     if no_display:
         display_available = False
+        if debug:
+            print("CV Module: Running in headless mode (no display output)")
     else:
         display_available = has_display()
         if display_available:
-            print("Display detected - showing live feed")
+            print("CV Module: Display detected - showing live feed")
         else:
-            print("No display detected - running in headless mode")
+            print("CV Module: No display detected - running in headless mode")
 
     # -----------------------------
     # Arduino serial (auto-detect)
@@ -213,6 +205,7 @@ def live_traffic_light_detection(state_callback=None, no_arduino=True, no_displa
                 cv2.imshow("Traffic Light Detection", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+            # No display output in headless mode - frames are processed but not shown
 
             # Optional: throttle loop slightly to stabilize CPU usage
             # removed for testing purposes

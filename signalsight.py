@@ -27,6 +27,11 @@ try:
 except ImportError:
     serial = None
 
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
 
 @dataclass
 class SystemState:
@@ -108,9 +113,10 @@ class ArduinoInterface:
 class CVModule:
     """Wrapper for CV detection module (cnn_system.py)."""
 
-    def __init__(self, state_queue: queue.Queue, debug: bool = False):
+    def __init__(self, state_queue: queue.Queue, debug: bool = False, show_display: bool = False):
         self.state_queue = state_queue
         self.debug = debug
+        self.show_display = show_display
         self.thread = None
         self.stop_event = threading.Event()
 
@@ -130,6 +136,8 @@ class CVModule:
                 'fps': cv_data['fps']
             })
         except queue.Full:
+            if self.debug:
+                print("WARNING: State queue is full, dropping CV update")
             pass
 
     def _run(self):
@@ -152,7 +160,7 @@ class CVModule:
             cnn_system.live_traffic_light_detection(
                 state_callback=self._cv_callback,
                 no_arduino=True,  # Integration handles Arduino
-                no_display=True,  # Integration handles display
+                no_display=not self.show_display,  # Show display if available
                 stop_event=self.stop_event
             )
 
@@ -271,23 +279,49 @@ class GPSModule:
 class SignalSight:
     """Main SignalSight system coordinator."""
 
-    def __init__(self, debug: bool = False, arduino_port: str = "/dev/ttyACM0", no_arduino: bool = False):
+    def __init__(self, debug: bool = False, arduino_port: str = "/dev/ttyACM0", no_arduino: bool = False, show_display: bool = None):
         self.debug = debug
         self.running = False
         self.state_queue = queue.Queue(maxsize=100)
         self.system_state = SystemState()
+
+        # Display detection
+        if show_display is None:
+            # Auto-detect display availability
+            self.show_display = self._detect_display()
+        else:
+            # User override
+            self.show_display = show_display
 
         # Arduino interface
         self.arduino = ArduinoInterface(arduino_port, no_arduino=no_arduino)
         self.system_state.arduino_connected = self.arduino.connected
 
         # Modules
-        self.cv_module = CVModule(self.state_queue, debug)
+        self.cv_module = CVModule(self.state_queue, debug, show_display=self.show_display)
         self.gps_module = GPSModule(self.state_queue, debug)
 
         # Signal handling
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+
+    def _detect_display(self) -> bool:
+        """
+        Detect if a display is available for showing video output.
+        Works for:
+        - Physical monitor connected to HDMI/DisplayPort
+        - Remote desktop (VNC, RealVNC, piConnect, etc.)
+        - X11 forwarding over SSH
+
+        Returns False for:
+        - Headless SSH sessions
+        """
+        if cv2 is None:
+            return False
+
+        # Check DISPLAY environment variable (set by X11/VNC/remote desktop)
+        # Don't try to create test windows as this can interfere with OpenCV initialization
+        return bool(os.environ.get('DISPLAY'))
 
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals."""
@@ -301,6 +335,7 @@ class SignalSight:
         print("SignalSight - Integrated Traffic Light Detection System")
         print("=" * 60)
         print(f"Debug Mode: {'ON' if self.debug else 'OFF'}")
+        print(f"Display: {'Enabled (showing camera feed)' if self.show_display else 'Disabled (headless mode)'}")
         print(f"Arduino: {'Connected' if self.arduino.connected else 'Not Connected (no-data-send mode)'}")
         print()
 
@@ -437,6 +472,16 @@ def main():
         help="Enable debug mode with live status updates"
     )
     parser.add_argument(
+        "--display",
+        action="store_true",
+        help="Force display mode (show camera feed)"
+    )
+    parser.add_argument(
+        "--no-display",
+        action="store_true",
+        help="Force headless mode (no camera feed display)"
+    )
+    parser.add_argument(
         "--arduino-port",
         default="/dev/ttyACM0",
         help="Arduino serial port (default: /dev/ttyACM0)"
@@ -449,11 +494,22 @@ def main():
 
     args = parser.parse_args()
 
+    # Determine display mode
+    show_display = None  # Auto-detect by default
+    if args.display and args.no_display:
+        print("ERROR: Cannot use both --display and --no-display")
+        sys.exit(1)
+    elif args.display:
+        show_display = True
+    elif args.no_display:
+        show_display = False
+
     # Create and start system
     system = SignalSight(
         debug=args.debug,
         arduino_port=args.arduino_port,
-        no_arduino=args.no_arduino
+        no_arduino=args.no_arduino,
+        show_display=show_display
     )
 
     try:

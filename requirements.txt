@@ -1,10 +1,15 @@
 # SignalSight - Traffic Light Detection System
 # Main project dependencies
+#
+# IMPORTANT: numpy is pinned to <2.0.0 because the system-installed picamera2 and
+# simplejpeg packages (installed via apt) are compiled against numpy 1.x C API.
+# Installing numpy 2.x will cause binary incompatibility errors during import.
+# The venv is created with --system-site-packages to access picamera2.
 
 # YOLO Detection Model
 ultralytics>=8.0.0
 opencv-python>=4.8.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0  # CRITICAL: Do not upgrade to 2.x - breaks picamera2/simplejpeg
 pandas>=2.0.0
 
 # Raspberry Pi Camera (install separately on Pi - see setup.sh)

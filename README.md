@@ -34,7 +34,7 @@ This will:
 - Install system dependencies (OpenCV, build tools, etc.)
 - Set up serial port permissions
 - Create a Python virtual environment
-- Install all Python packages
+- Install all Python packages (with automatic numpy compatibility checks)
 - Configure the GPS subsystem
 
 **Note:** After installation, you may need to log out and log back in for serial port permissions to take effect.
@@ -189,8 +189,11 @@ deactivate
 
 ```bash
 source venv/bin/activate
-pip install --upgrade -r requirements.txt
+pip install -r requirements.txt
 ```
+
+**IMPORTANT:** Do NOT use `--upgrade` flag, as this may install incompatible numpy 2.x.
+The requirements.txt pins numpy to 1.x for compatibility with system picamera2/simplejpeg packages.
 
 ### Run as System Service (Optional)
 
@@ -231,6 +234,28 @@ SignalSight uses two complementary approaches:
 - Location: `YOLO_Detection_Model/HSV/`
 
 ## Troubleshooting
+
+### Numpy Compatibility Error
+
+If you see this error:
+```
+ERROR: numpy.dtype size changed, may indicate binary incompatibility
+```
+
+This means numpy 2.x was installed, which is incompatible with picamera2. Fix:
+
+```bash
+# Remove numpy 2.x from venv
+rm -rf venv/lib/python3.*/site-packages/numpy*
+
+# Verify fix (should show numpy 1.x from system)
+source venv/bin/activate
+python -c "import numpy; print(numpy.__version__)"
+
+# Should output: 1.24.2 or similar 1.x version
+```
+
+The setup.sh script now auto-detects and prevents this issue.
 
 ### Camera Not Working
 
