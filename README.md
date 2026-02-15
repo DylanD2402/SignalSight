@@ -84,7 +84,7 @@ python signalsight.py --arduino-port /dev/ttyUSB0
 
 **Traffic Light Detection Only:**
 ```bash
-cd YOLO_Detection_Model/CNN
+cd cv
 python cnn_system.py
 ```
 
@@ -110,21 +110,25 @@ python gps_system.py --debug
 
 ```
 SignalSight/
-├── YOLO_Detection_Model/     # Traffic light detection models
-│   ├── CNN/                  # CNN-based detection (YOLO)
+├── cv/                       # Computer vision subsystem
+│   ├── cnn_system.py         # CPU YOLO inference
+│   ├── cnn_system_imx500.py  # IMX500 on-sensor inference
+│   ├── real_time_detection.py # Simple YOLO demo utility
 │   ├── HSV/                  # HSV color-based detection
-│   ├── images/               # Test images
-│   ├── best.pt               # Trained YOLO model
-│   └── yolov8n.pt            # Base YOLO model
+│   └── models/
+│       ├── imx500/           # IMX500 firmware (.rpk) and labels
+│       └── yolo/             # Trained YOLO model (best.pt)
 ├── GPS/                      # GPS and traffic light database
 │   ├── setup/                # GPS setup scripts and database
 │   ├── gps_system.py         # Main GPS system
 │   └── traffic_light_db.py   # Traffic light database interface
+├── arduino/                  # Arduino firmware sketches
 ├── tests/                    # Robot Framework test suite
 │   ├── unit/                 # Unit tests
 │   ├── integration/          # Integration tests
 │   ├── e2e/                  # End-to-end tests
 │   └── run_all_tests.sh      # Test runner
+├── setup/                    # System config (service, udev rules)
 ├── setup.sh                  # Main setup script
 ├── requirements.txt          # Python dependencies
 ├── INSTALL.md                # Detailed installation guide
@@ -137,19 +141,19 @@ SignalSight/
 
 **CNN-based detection** (recommended):
 ```bash
-cd YOLO_Detection_Model/CNN
+cd cv
 python cnn_system.py
 ```
 
 **HSV-based detection**:
 ```bash
-cd YOLO_Detection_Model/HSV
+cd cv/HSV
 python detection_modelv2.py
 ```
 
 **Real-time state machine** (with Arduino integration):
 ```bash
-cd YOLO_Detection_Model/HSV
+cd cv/HSV
 python real_time_states.py
 ```
 
@@ -225,13 +229,13 @@ SignalSight uses two complementary approaches:
 - Uses YOLOv8 for object detection
 - Detects traffic light bounding boxes
 - Classifies light color using trained model
-- Location: `YOLO_Detection_Model/CNN/`
+- Location: `cv/`
 
 ### 2. HSV-based Detection
 - Uses YOLO for traffic light localization
 - Applies HSV color space analysis for state detection
 - More robust to lighting variations
-- Location: `YOLO_Detection_Model/HSV/`
+- Location: `cv/HSV/`
 
 ## Troubleshooting
 
@@ -276,7 +280,7 @@ sudo usermod -a -G dialout $USER
 
 ### Model Files Missing
 
-Ensure you're in the correct directory when running detection scripts. Model files (`best.pt`, `yolov8n.pt`) should be in `YOLO_Detection_Model/`.
+Ensure you're in the correct directory when running detection scripts. Model files are in `cv/models/` (YOLO in `cv/models/yolo/`, IMX500 in `cv/models/imx500/`).
 
 ## License
 

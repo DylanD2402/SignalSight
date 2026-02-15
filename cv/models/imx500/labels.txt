@@ -1,0 +1,5 @@
+red
+yellow
+green
+red_arrow
+green_arrow

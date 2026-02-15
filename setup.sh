@@ -63,6 +63,11 @@ if [ "$IS_RPI" = true ]; then
         python3-picamera2 \
         rpicam-apps \
         python3-libcamera
+
+    # IMX500 AI Camera support (firmware, models, tools, postprocessing)
+    echo "Installing IMX500 AI Camera packages..."
+    sudo apt-get install -y \
+        imx500-all
 fi
 
 echo "System dependencies installed."
@@ -192,15 +197,17 @@ echo "1. Activate the virtual environment:"
 echo "   cd $SCRIPT_DIR"
 echo "   source venv/bin/activate"
 echo ""
-echo "2. Run YOLO detection (with display):"
-echo "   cd YOLO_Detection_Model/CNN"
-echo "   python cnn_system.py"
+echo "2. Run IMX500 detection (recommended - on-sensor inference):"
+echo "   python signalsight_imx500.py --debug --display"
 echo ""
-echo "3. Run GPS system:"
+echo "3. Run CPU-based YOLO detection (fallback):"
+echo "   python signalsight.py --debug --display"
+echo ""
+echo "4. Run GPS system:"
 echo "   cd GPS"
 echo "   python gps_system.py"
 echo ""
-echo "4. Run tests:"
+echo "5. Run tests:"
 echo "   cd tests"
 echo "   ./run_all_tests.sh"
 echo ""

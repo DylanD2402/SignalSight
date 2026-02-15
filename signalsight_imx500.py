@@ -1,0 +1,517 @@
+#!/usr/bin/env python3
+"""
+SignalSight - Integrated Traffic Light Detection System (IMX500)
+Combines Computer Vision (IMX500 on-sensor inference) and GPS for driver assistance
+
+This integration code acts as glue between CV detection and GPS proximity,
+coordinating their execution and managing Arduino communication.
+
+Uses cnn_system_imx500.py for on-sensor inference via the IMX500 .rpk model
+instead of CPU-based YOLO inference.
+"""
+
+import sys
+import os
+import time
+import threading
+import argparse
+import signal
+from typing import Optional, Callable
+from dataclasses import dataclass
+
+# Add module paths
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(SCRIPT_DIR, 'cv'))
+sys.path.insert(0, os.path.join(SCRIPT_DIR, 'GPS'))
+
+try:
+    import serial
+except ImportError:
+    serial = None
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+
+@dataclass
+class SystemState:
+    """Combined system state."""
+    cv_state: str = "IDLE"
+    cv_confidence: float = 0.0
+    cv_fps: float = 0.0
+    gps_distance: int = 0  # meters
+    gps_speed: int = 0  # km/h
+    gps_satellites: int = 0
+    gps_nearby_lights: int = 0
+    gps_has_fix: bool = False
+    arduino_connected: bool = False
+    timestamp: float = 0.0
+
+
+class ArduinoInterface:
+    """Centralized Arduino serial communication handler."""
+
+    def __init__(self, port: str = "/dev/ttyACM0", baudrate: int = 115200, no_arduino: bool = False):
+        self.port = port
+        self.baudrate = baudrate
+        self.no_arduino = no_arduino
+        self.ser = None
+        self.lock = threading.Lock()
+        self.connected = False
+
+        if not no_arduino:
+            self._connect()
+
+    def _connect(self):
+        """Attempt to connect to Arduino."""
+        if serial is None:
+            print("WARNING: pyserial not installed - Arduino communication disabled")
+            return
+
+        try:
+            self.ser = serial.Serial(self.port, self.baudrate, timeout=1)
+            time.sleep(2)  # Wait for Arduino reset
+            self.connected = True
+            print(f"Arduino connected on {self.port}")
+        except Exception as e:
+            self.connected = False
+            self.ser = None
+            print(f"WARNING: Arduino not connected: {e}")
+            print("   Running in no-data-send mode")
+
+    def send_data(self, state: str, speed: int, distance: int) -> bool:
+        """
+        Send complete data to Arduino. Thread-safe.
+
+        Format: STATE=ACTIVE_RED SPEED={speed} DIST={distance}\n
+        Example: STATE=ACTIVE_RED SPEED=60 DIST=45\n
+        """
+        if not self.connected or self.ser is None or self.no_arduino:
+            return False
+
+        with self.lock:
+            try:
+                message = f"STATE={state} SPEED={speed} DIST={distance}\n"
+                self.ser.write(message.encode('utf-8'))
+                self.ser.flush()
+                return True
+            except Exception as e:
+                print(f"WARNING: Arduino communication error: {e}")
+                self.connected = False
+                return False
+
+    def close(self):
+        """Close serial connection."""
+        if self.ser is not None:
+            with self.lock:
+                try:
+                    self.ser.close()
+                except:
+                    pass
+
+
+class CVModule:
+    """Wrapper for CV detection module (cnn_system_imx500.py)."""
+
+    def __init__(self, cv_state_lock: threading.Lock, coordinator, debug: bool = False, show_display: bool = False, stream: bool = False):
+        self.cv_state_lock = cv_state_lock
+        self.coordinator = coordinator
+        self.debug = debug
+        self.show_display = show_display
+        self.stream = stream
+        self.thread = None
+        self.stop_event = threading.Event()
+
+    def start(self):
+        """Start CV detection in a thread."""
+        self.stop_event.clear()
+        self.thread = threading.Thread(target=self._run, daemon=True, name="CV-Module")
+        self.thread.start()
+
+    def _cv_callback(self, cv_data):
+        """Callback function called by cnn_system.py with detection results."""
+        with self.cv_state_lock:
+            self.coordinator.latest_cv = {
+                'state': cv_data['state'],
+                'confidence': cv_data['confidence'],
+                'fps': cv_data['fps']
+            }
+
+    def _run(self):
+        """Run CV detection by importing and calling cnn_system_imx500.py."""
+        try:
+            # Save current directory
+            original_dir = os.getcwd()
+
+            # Change to CV module directory
+            os.chdir(os.path.join(SCRIPT_DIR, 'cv'))
+
+            # Import the IMX500 CV module
+            sys.path.insert(0, os.getcwd())
+            import cnn_system_imx500
+
+            if self.debug:
+                print("CV Module started (using cnn_system_imx500.py - IMX500 on-sensor inference)")
+
+            # Call the IMX500 version of live_traffic_light_detection
+            cnn_system_imx500.live_traffic_light_detection(
+                state_callback=self._cv_callback,
+                no_arduino=True,  # Integration handles Arduino
+                no_display=not self.show_display,  # Show display if available
+                stop_event=self.stop_event,
+                stream=self.stream
+            )
+
+            # Restore directory
+            os.chdir(original_dir)
+
+        except Exception as e:
+            print(f"ERROR: CV Module Error: {e}")
+            print("CV detection will not be available")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+    def stop(self):
+        """Stop CV module."""
+        self.stop_event.set()
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=5)
+
+
+class GPSModule:
+    """Wrapper for GPS proximity detection using gps_system.py."""
+
+    def __init__(self, cv_state_lock: threading.Lock, coordinator, debug: bool = False):
+        self.cv_state_lock = cv_state_lock
+        self.coordinator = coordinator
+        self.debug = debug
+        self.gps_system = None
+
+    def start(self):
+        """Start GPS detection by importing and running gps_system.py."""
+        try:
+            # Import the actual GPS modules
+            from gps_system import GPSTrafficLightSystem
+            import logging
+
+            # Suppress GPS system logging (integration handles display)
+            logging.disable(logging.CRITICAL)
+
+            # Try multiple GPS device paths
+            GPS_DEVICES = ["/dev/gps0", "/dev/serial0", "/dev/ttyAMA0", "/dev/ttyS0"]
+            gps_port = None
+            for device in GPS_DEVICES:
+                if os.path.exists(device):
+                    gps_port = device
+                    break
+
+            if not gps_port:
+                print("WARNING: No GPS device found, running without GPS")
+                return
+
+            GPS_BAUDRATE = 9600
+            PROXIMITY_THRESHOLD = 100  # meters
+            DB_PATH = os.path.join(SCRIPT_DIR, "GPS/data/traffic_lights.db")
+
+            # Create GPS system (no Arduino - integration handles it)
+            self.gps_system = GPSTrafficLightSystem(
+                gps_port=gps_port,
+                gps_baudrate=GPS_BAUDRATE,
+                db_path=DB_PATH,
+                arduino_port=None,  # Integration layer handles Arduino
+                query_interval=0.125,  # 8Hz updates (~2.5m at 80km/h)
+                search_radius=PROXIMITY_THRESHOLD
+            )
+
+            # Set up callback to push GPS data to state queue
+            def on_position_update(position):
+                """Callback called by GPSTrafficLightSystem on position updates."""
+                # Get closest light
+                closest = self.gps_system.get_closest_light()
+                nearby = self.gps_system.get_nearby_lights()
+
+                # Calculate speed in km/h
+                speed_kmh = 0
+                if position.speed is not None:
+                    speed_kmh = int(round(position.speed * 3.6))
+
+                # Calculate distance in meters
+                distance_m = 0
+                if closest:
+                    distance_m = int(round(closest.distance))
+
+                # Update shared state
+                with self.cv_state_lock:
+                    self.coordinator.latest_gps = {
+                        'distance': distance_m,
+                        'speed': speed_kmh,
+                        'satellites': position.satellites,
+                        'nearby_lights': len(nearby),
+                        'has_fix': position.fix_quality > 0
+                    }
+
+            self.gps_system.set_position_callback(on_position_update)
+
+            # Start the GPS system (it manages its own threads)
+            if self.gps_system.start():
+                if self.debug:
+                    print(f"GPS Module started on {gps_port}")
+            else:
+                print("WARNING: GPS Module failed to start, continuing without GPS")
+                self.gps_system = None
+
+        except Exception as e:
+            print(f"WARNING: GPS Module Error: {e}")
+            print("Continuing without GPS")
+            self.gps_system = None
+
+    def stop(self):
+        """Stop GPS module."""
+        if self.gps_system:
+            self.gps_system.stop()
+
+
+class SignalSight:
+    """Main SignalSight system coordinator."""
+
+    def __init__(self, debug: bool = False, arduino_port: str = "/dev/ttyACM0", no_arduino: bool = False, show_display: bool = None, stream: bool = False):
+        self.debug = debug
+        self.running = False
+        self.cv_state_lock = threading.Lock()
+        self.latest_cv = None
+        self.latest_gps = None
+        self.system_state = SystemState()
+
+        # Display detection
+        if show_display is None:
+            # Auto-detect display availability
+            self.show_display = self._detect_display()
+        else:
+            # User override
+            self.show_display = show_display
+
+        # Arduino interface
+        self.arduino = ArduinoInterface(arduino_port, no_arduino=no_arduino)
+        self.system_state.arduino_connected = self.arduino.connected
+
+        # Modules
+        self.cv_module = CVModule(self.cv_state_lock, self, debug, show_display=self.show_display, stream=stream)
+        self.gps_module = GPSModule(self.cv_state_lock, self, debug)
+
+        # Signal handling
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+    def _detect_display(self) -> bool:
+        """
+        Detect if a display is available for showing video output.
+        Works for:
+        - Physical monitor connected to HDMI/DisplayPort
+        - Remote desktop (VNC, RealVNC, piConnect, etc.)
+        - X11 forwarding over SSH
+
+        Returns False for:
+        - Headless SSH sessions
+        """
+        if cv2 is None:
+            return False
+
+        # Check DISPLAY environment variable (set by X11/VNC/remote desktop)
+        # Don't try to create test windows as this can interfere with OpenCV initialization
+        return bool(os.environ.get('DISPLAY'))
+
+    def _signal_handler(self, signum, frame):
+        """Handle shutdown signals."""
+        print("\n\nShutting down SignalSight...")
+        self.running = False
+        # Restore default handler so a second Ctrl+C force-kills
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+    def start(self):
+        """Start the SignalSight system."""
+        print("=" * 60)
+        print("SignalSight - Integrated Traffic Light Detection (IMX500)")
+        print("=" * 60)
+        print(f"Debug Mode: {'ON' if self.debug else 'OFF'}")
+        print(f"Display: {'Enabled (showing camera feed)' if self.show_display else 'Disabled (headless mode)'}")
+        print(f"Arduino: {'Connected' if self.arduino.connected else 'Not Connected (no-data-send mode)'}")
+        print()
+
+        self.running = True
+
+        # Start modules
+        self.cv_module.start()
+        self.gps_module.start()
+
+        if self.debug:
+            print()
+            print("=" * 60)
+            print("LIVE STATUS (Ctrl+C to stop)")
+            print("=" * 60)
+
+        # Main coordination loop
+        self._coordination_loop()
+
+    def _coordination_loop(self):
+        """Main loop - processes states and sends to Arduino."""
+        last_sent_state = None
+        last_sent_speed = None
+        last_sent_distance = None
+
+        while self.running:
+            try:
+                # Grab and clear latest updates under lock
+                with self.cv_state_lock:
+                    cv_update = self.latest_cv
+                    gps_update = self.latest_gps
+                    self.latest_cv = None
+                    self.latest_gps = None
+
+                if cv_update is not None:
+                    self.system_state.cv_state = cv_update['state']
+                    self.system_state.cv_confidence = cv_update['confidence']
+                    self.system_state.cv_fps = cv_update['fps']
+                    self.system_state.timestamp = time.time()
+
+                if gps_update is not None:
+                    self.system_state.gps_distance = gps_update['distance']
+                    self.system_state.gps_speed = gps_update['speed']
+                    self.system_state.gps_satellites = gps_update['satellites']
+                    self.system_state.gps_nearby_lights = gps_update['nearby_lights']
+                    self.system_state.gps_has_fix = gps_update['has_fix']
+                    self.system_state.timestamp = time.time()
+
+                # Send to Arduino if any value changed
+                if (self.system_state.cv_state != last_sent_state or
+                    self.system_state.gps_speed != last_sent_speed or
+                    self.system_state.gps_distance != last_sent_distance):
+
+                    if self.arduino.send_data(
+                        self.system_state.cv_state,
+                        self.system_state.gps_speed,
+                        self.system_state.gps_distance
+                    ):
+                        last_sent_state = self.system_state.cv_state
+                        last_sent_speed = self.system_state.gps_speed
+                        last_sent_distance = self.system_state.gps_distance
+
+                        if not self.debug:
+                            print(f"[{time.strftime('%H:%M:%S')}] → Arduino: "
+                                  f"STATE={self.system_state.cv_state} "
+                                  f"SPEED={self.system_state.gps_speed} "
+                                  f"DIST={self.system_state.gps_distance}")
+
+                # Debug display
+                if self.debug:
+                    self._update_debug_display()
+
+                time.sleep(0.05)  # 20Hz update rate
+
+            except KeyboardInterrupt:
+                break
+
+    def _update_debug_display(self):
+        """Update debug display on a single line using carriage return."""
+        status = self._format_status_line()
+        sys.stdout.write(f"\r\033[K{status}")
+        sys.stdout.flush()
+
+    def _format_status_line(self) -> str:
+        """Format a single combined status line."""
+        state_str = self.system_state.cv_state.replace("ACTIVE_", "")
+
+        gps_str = "NO_FIX"
+        if self.system_state.gps_has_fix:
+            gps_str = f"{self.system_state.gps_distance}m"
+
+        return (f"[{time.strftime('%H:%M:%S')}] "
+                f"{state_str:<8s} "
+                f"Conf:{self.system_state.cv_confidence:.2f} "
+                f"FPS:{self.system_state.cv_fps:.1f} | "
+                f"GPS:{gps_str} "
+                f"Spd:{self.system_state.gps_speed}km/h "
+                f"Sats:{self.system_state.gps_satellites}")
+
+    def stop(self):
+        """Stop the system."""
+        if not self.running:
+            return  # Already stopped
+        self.running = False
+        self.cv_module.stop()
+        self.gps_module.stop()
+        self.arduino.close()
+        print("Clean shutdown complete")
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="SignalSight - Integrated Traffic Light Detection System (IMX500)"
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=True,
+        help="Enable debug mode with live status updates (default: on)"
+    )
+    parser.add_argument(
+        "--display",
+        action="store_true",
+        help="Force display mode (show camera feed)"
+    )
+    parser.add_argument(
+        "--no-display",
+        action="store_true",
+        help="Force headless mode (no camera feed display)"
+    )
+    parser.add_argument(
+        "--arduino-port",
+        default="/dev/ttyACM0",
+        help="Arduino serial port (default: /dev/ttyACM0)"
+    )
+    parser.add_argument(
+        "--no-arduino",
+        action="store_true",
+        help="Run without Arduino (no data sending)"
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Enable MJPEG stream server for remote viewing (VLC)"
+    )
+
+    args = parser.parse_args()
+
+    # Determine display mode
+    show_display = None  # Auto-detect by default
+    if args.display and args.no_display:
+        print("ERROR: Cannot use both --display and --no-display")
+        sys.exit(1)
+    elif args.display:
+        show_display = True
+    elif args.no_display:
+        show_display = False
+
+    # Create and start system
+    system = SignalSight(
+        debug=args.debug,
+        arduino_port=args.arduino_port,
+        no_arduino=args.no_arduino,
+        show_display=show_display,
+        stream=args.stream
+    )
+
+    try:
+        system.start()
+    except KeyboardInterrupt:
+        print("\n\nInterrupted by user")
+    finally:
+        system.stop()
+
+
+if __name__ == "__main__":
+    main()

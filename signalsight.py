@@ -11,7 +11,6 @@ import sys
 import os
 import time
 import threading
-import queue
 import argparse
 import signal
 from typing import Optional, Callable
@@ -19,7 +18,7 @@ from dataclasses import dataclass
 
 # Add module paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(SCRIPT_DIR, 'YOLO_Detection_Model/CNN'))
+sys.path.insert(0, os.path.join(SCRIPT_DIR, 'cv'))
 sys.path.insert(0, os.path.join(SCRIPT_DIR, 'GPS'))
 
 try:
@@ -113,8 +112,9 @@ class ArduinoInterface:
 class CVModule:
     """Wrapper for CV detection module (cnn_system.py)."""
 
-    def __init__(self, state_queue: queue.Queue, debug: bool = False, show_display: bool = False):
-        self.state_queue = state_queue
+    def __init__(self, cv_state_lock: threading.Lock, coordinator, debug: bool = False, show_display: bool = False):
+        self.cv_state_lock = cv_state_lock
+        self.coordinator = coordinator
         self.debug = debug
         self.show_display = show_display
         self.thread = None
@@ -128,17 +128,12 @@ class CVModule:
 
     def _cv_callback(self, cv_data):
         """Callback function called by cnn_system.py with detection results."""
-        try:
-            self.state_queue.put_nowait({
-                'type': 'CV',
+        with self.cv_state_lock:
+            self.coordinator.latest_cv = {
                 'state': cv_data['state'],
                 'confidence': cv_data['confidence'],
                 'fps': cv_data['fps']
-            })
-        except queue.Full:
-            if self.debug:
-                print("WARNING: State queue is full, dropping CV update")
-            pass
+            }
 
     def _run(self):
         """Run CV detection by importing and calling cnn_system.py."""
@@ -147,7 +142,7 @@ class CVModule:
             original_dir = os.getcwd()
 
             # Change to CV module directory
-            os.chdir(os.path.join(SCRIPT_DIR, 'YOLO_Detection_Model/CNN'))
+            os.chdir(os.path.join(SCRIPT_DIR, 'cv'))
 
             # Import the actual CV module
             sys.path.insert(0, os.getcwd())
@@ -184,8 +179,9 @@ class CVModule:
 class GPSModule:
     """Wrapper for GPS proximity detection using gps_system.py."""
 
-    def __init__(self, state_queue: queue.Queue, debug: bool = False):
-        self.state_queue = state_queue
+    def __init__(self, cv_state_lock: threading.Lock, coordinator, debug: bool = False):
+        self.cv_state_lock = cv_state_lock
+        self.coordinator = coordinator
         self.debug = debug
         self.gps_system = None
 
@@ -221,7 +217,7 @@ class GPSModule:
                 gps_baudrate=GPS_BAUDRATE,
                 db_path=DB_PATH,
                 arduino_port=None,  # Integration layer handles Arduino
-                query_interval=0.5,  # 2Hz updates
+                query_interval=0.125,  # 8Hz updates (~2.5m at 80km/h)
                 search_radius=PROXIMITY_THRESHOLD
             )
 
@@ -242,18 +238,15 @@ class GPSModule:
                 if closest:
                     distance_m = int(round(closest.distance))
 
-                # Send to queue
-                try:
-                    self.state_queue.put_nowait({
-                        'type': 'GPS',
+                # Update shared state
+                with self.cv_state_lock:
+                    self.coordinator.latest_gps = {
                         'distance': distance_m,
                         'speed': speed_kmh,
                         'satellites': position.satellites,
                         'nearby_lights': len(nearby),
                         'has_fix': position.fix_quality > 0
-                    })
-                except queue.Full:
-                    pass
+                    }
 
             self.gps_system.set_position_callback(on_position_update)
 
@@ -282,7 +275,9 @@ class SignalSight:
     def __init__(self, debug: bool = False, arduino_port: str = "/dev/ttyACM0", no_arduino: bool = False, show_display: bool = None):
         self.debug = debug
         self.running = False
-        self.state_queue = queue.Queue(maxsize=100)
+        self.cv_state_lock = threading.Lock()
+        self.latest_cv = None
+        self.latest_gps = None
         self.system_state = SystemState()
 
         # Display detection
@@ -298,8 +293,8 @@ class SignalSight:
         self.system_state.arduino_connected = self.arduino.connected
 
         # Modules
-        self.cv_module = CVModule(self.state_queue, debug, show_display=self.show_display)
-        self.gps_module = GPSModule(self.state_queue, debug)
+        self.cv_module = CVModule(self.cv_state_lock, self, debug, show_display=self.show_display)
+        self.gps_module = GPSModule(self.cv_state_lock, self, debug)
 
         # Signal handling
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -364,25 +359,26 @@ class SignalSight:
 
         while self.running:
             try:
-                # Get state updates
-                try:
-                    update = self.state_queue.get(timeout=0.1)
+                # Grab and clear latest updates under lock
+                with self.cv_state_lock:
+                    cv_update = self.latest_cv
+                    gps_update = self.latest_gps
+                    self.latest_cv = None
+                    self.latest_gps = None
 
-                    if update['type'] == 'CV':
-                        self.system_state.cv_state = update['state']
-                        self.system_state.cv_confidence = update['confidence']
-                        self.system_state.cv_fps = update['fps']
-                    elif update['type'] == 'GPS':
-                        self.system_state.gps_distance = update['distance']
-                        self.system_state.gps_speed = update['speed']
-                        self.system_state.gps_satellites = update['satellites']
-                        self.system_state.gps_nearby_lights = update['nearby_lights']
-                        self.system_state.gps_has_fix = update['has_fix']
-
+                if cv_update is not None:
+                    self.system_state.cv_state = cv_update['state']
+                    self.system_state.cv_confidence = cv_update['confidence']
+                    self.system_state.cv_fps = cv_update['fps']
                     self.system_state.timestamp = time.time()
 
-                except queue.Empty:
-                    pass
+                if gps_update is not None:
+                    self.system_state.gps_distance = gps_update['distance']
+                    self.system_state.gps_speed = gps_update['speed']
+                    self.system_state.gps_satellites = gps_update['satellites']
+                    self.system_state.gps_nearby_lights = gps_update['nearby_lights']
+                    self.system_state.gps_has_fix = gps_update['has_fix']
+                    self.system_state.timestamp = time.time()
 
                 # Send to Arduino if any value changed
                 if (self.system_state.cv_state != last_sent_state or
@@ -469,7 +465,8 @@ def main():
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Enable debug mode with live status updates"
+        default=True,
+        help="Enable debug mode with live status updates (default: on)"
     )
     parser.add_argument(
         "--display",
