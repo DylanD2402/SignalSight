@@ -831,4 +831,7 @@ def process_video(video_path: str):
     cv2.destroyAllWindows()
     print("Video processing finished. Final state:", current_state.name)
 
-process_video("../images/20251119_073415A.mp4")
+#process_video("../images/20251119_073415A.mp4")
+
+if __name__ == "__main__":
+    main()
