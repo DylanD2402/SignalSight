@@ -18,7 +18,7 @@ class SystemState(Enum):
 # -----------------------------
 # YOLO + HSV Config
 # -----------------------------
-model = YOLO("yolov8n.pt")  # replace with your trained model later
+model = YOLO("best52.pt")  # replace with your trained model later
 
 # HSV ranges copied / adapted from detection_modelv2.py
 COLOR_RANGES = {
@@ -283,15 +283,17 @@ def main():
         # Find best traffic light box (highest confidence)
         best_box = None
         best_conf = 0.0
-        for r in results:
-            for box in r.boxes:
-                cls_id = int(box.cls[0])
-                label = model.names[cls_id]
-                conf = float(box.conf[0])
 
-                if "traffic light" in label.lower() and conf > best_conf:
+        for r in results:
+            if r.boxes is None or len(r.boxes) == 0:
+                continue
+
+            for box in r.boxes:
+                conf = float(box.conf[0])
+                if conf > best_conf:
                     best_conf = conf
                     best_box = box
+
 
         has_detection = best_box is not None and best_conf >= CONF_THRESH
 
